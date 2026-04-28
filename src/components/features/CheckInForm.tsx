@@ -130,7 +130,7 @@ export default function CheckInForm() {
       <div className="mb-4">
         <h2 className="text-xl font-bold text-gray-900 tracking-tight">Registrasi Tamu</h2>
         <p className="mt-0.5 text-xs text-gray-500">
-          Langkah 1: Lengkapi data kunjungan Anda.
+          Lengkapi data kunjungan Anda di bawah ini.
         </p>
       </div>
 
