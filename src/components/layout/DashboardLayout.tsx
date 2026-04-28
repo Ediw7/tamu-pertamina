@@ -35,15 +35,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         body: JSON.stringify({ username, password }),
       });
 
+      const data = await res.json();
+
       if (res.ok) {
         sessionStorage.setItem("adminAuth", "true");
         setIsAuthenticated(true);
       } else {
+        // Tampilkan pesan error spesifik dari server
+        alert("Login Gagal: " + (data.message || "Username atau Password salah"));
         setError(true);
         setPassword("");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert("Kesalahan Sistem: " + err.message);
       setError(true);
     } finally {
       setIsLoading(false);
