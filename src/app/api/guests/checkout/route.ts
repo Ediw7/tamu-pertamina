@@ -11,22 +11,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'QR Code is required' }, { status: 400 });
     }
 
-    const guest = await Guest.findOneAndUpdate(
-      { qr_code },
-      { 
-        status: 'checked_out',
-        check_out_time: new Date()
-      },
-      { new: true }
-    );
+    // 1. Cari tamu berdasarkan QR Code
+    const guest = await Guest.findOne({ qr_code });
 
     if (!guest) {
-      return NextResponse.json({ error: 'Guest not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Data tamu tidak ditemukan' }, { status: 404 });
     }
+
+    // 2. VALIDASI: Cek apakah tamu sudah checkout sebelumnya
+    if (guest.status === 'CHECKED_OUT') {
+      return NextResponse.json({ 
+        error: 'Gagal! Tamu ini sudah tercatat KELUAR sebelumnya.',
+        alreadyCheckedOut: true 
+      }, { status: 400 });
+    }
+
+    // 3. Proses Checkout jika status masih CHECKED_IN
+    guest.status = 'CHECKED_OUT';
+    guest.check_out_time = new Date();
+    await guest.save();
 
     return NextResponse.json({ success: true, guest });
   } catch (error) {
     console.error('Failed to checkout guest:', error);
-    return NextResponse.json({ error: 'Failed to process checkout' }, { status: 500 });
+    return NextResponse.json({ error: 'Terjadi kesalahan sistem saat checkout' }, { status: 500 });
   }
 }

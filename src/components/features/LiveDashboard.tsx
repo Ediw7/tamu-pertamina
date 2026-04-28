@@ -1,8 +1,37 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, UserCheck, Clock, ShieldAlert, CheckCircle2, Download, Trash2, Search, Filter, Calendar, ChevronRight } from "lucide-react";
+import { 
+  Users, UserCheck, Clock, ShieldAlert, CheckCircle2, Download, 
+  Trash2, Search, Filter, Calendar, ChevronRight, BarChart3, PieChart, Activity
+} from "lucide-react";
 import { Guest } from "@/types/guest";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  PointElement,
+  LineElement,
+} from 'chart.js';
+import { Bar, Pie, Line } from 'react-chartjs-2';
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  PointElement,
+  LineElement
+);
 
 export default function LiveDashboard() {
   const [guests, setGuests] = useState<Guest[]>([]);
@@ -10,6 +39,7 @@ export default function LiveDashboard() {
   const [todayCount, setTodayCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [overstayCount, setOverstayCount] = useState(0);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   
   // States for search and filtering
   const [searchQuery, setSearchQuery] = useState("");
@@ -36,16 +66,16 @@ export default function LiveDashboard() {
           setGuests(data);
           
           const now = new Date().getTime();
-          const active = data.filter((g: Guest) => g.status === 'checked_in');
+          const active = data.filter((g: any) => g.status === 'CHECKED_IN');
           setActiveCount(active.length);
           
-          const overstay = active.filter((g: Guest) => (now - new Date(g.check_in_time).getTime()) > (4 * 60 * 60 * 1000));
+          const overstay = active.filter((g: any) => (now - new Date(g.check_in_time).getTime()) > (4 * 60 * 60 * 1000));
           setOverstayCount(overstay.length);
           
           const today = new Date().toDateString();
-          const todayGuests = data.filter((g: Guest) => new Date(g.check_in_time).toDateString() === today);
+          const todayGuests = data.filter((g: any) => new Date(g.check_in_time).toDateString() === today);
           setTodayCount(todayGuests.length);
-          setCompletedCount(todayGuests.filter((g: Guest) => g.status === 'checked_out').length);
+          setCompletedCount(todayGuests.filter((g: any) => g.status === 'CHECKED_OUT').length);
         }
       } catch (error) {
         console.error('Failed to fetch guests', error);
@@ -103,7 +133,6 @@ export default function LiveDashboard() {
     }
   };
 
-  // ISO Week calculation helper
   const getISOWeek = (date: Date) => {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
     const dayNum = d.getUTCDay() || 7;
@@ -137,25 +166,71 @@ export default function LiveDashboard() {
     return matchesSearch && matchesStatus && matchesTime;
   });
 
+  // --- Analytics Data Processing ---
+  
+  // 1. Hourly Arrival Distribution
+  const hourlyData = Array(24).fill(0);
+  filteredGuests.forEach(g => {
+    const hour = new Date(g.check_in_time).getHours();
+    hourlyData[hour]++;
+  });
+
+  // 2. Purpose Distribution
+  const purposeCounts: Record<string, number> = {};
+  filteredGuests.forEach(g => {
+    purposeCounts[g.purpose] = (purposeCounts[g.purpose] || 0) + 1;
+  });
+
+  // 3. Average Duration (for checked_out guests)
+  const completedGuests = filteredGuests.filter(g => g.status === 'CHECKED_OUT' && g.check_out_time);
+  const totalDuration = completedGuests.reduce((acc, g) => {
+    const duration = new Date(g.check_out_time!).getTime() - new Date(g.check_in_time).getTime();
+    return acc + duration;
+  }, 0);
+  const avgDurationMinutes = completedGuests.length > 0 ? Math.round(totalDuration / completedGuests.length / (1000 * 60)) : 0;
+
+  // Chart Colors
+  const colors = [
+    'rgba(239, 68, 68, 0.8)', // red
+    'rgba(59, 130, 246, 0.8)', // blue
+    'rgba(16, 185, 129, 0.8)', // emerald
+    'rgba(245, 158, 11, 0.8)', // amber
+    'rgba(139, 92, 246, 0.8)', // violet
+    'rgba(236, 72, 153, 0.8)', // pink
+  ];
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">Live Dashboard</h2>
-          <p className="mt-1 text-sm text-gray-500">Pantau aktivitas pengunjung di area operasional secara real-time.</p>
+          <p className="mt-1 text-sm text-gray-500 font-medium">Monitoring Real-Time & Business Intelligence.</p>
         </div>
-        <button
-          onClick={handleExportCSV}
-          className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-md shadow-green-500/20"
-        >
-          <Download className="w-4 h-4" />
-          Export CSV ({filteredGuests.length})
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowAnalytics(!showAnalytics)}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all border ${
+              showAnalytics 
+              ? "bg-red-50 text-red-600 border-red-200" 
+              : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+            }`}
+          >
+            {showAnalytics ? <Activity className="w-4 h-4" /> : <BarChart3 className="w-4 h-4" />}
+            {showAnalytics ? "Tampilkan Tabel" : "Analitik BI"}
+          </button>
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-md shadow-green-500/20"
+          >
+            <Download className="w-4 h-4" />
+            Export CSV ({filteredGuests.length})
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="p-6 bg-white border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl relative overflow-hidden">
+        <div className="p-6 bg-white border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl relative overflow-hidden transition-transform hover:scale-[1.02]">
           <div className="absolute top-0 right-0 p-4 opacity-5">
             <Users className="w-16 h-16" />
           </div>
@@ -168,33 +243,33 @@ export default function LiveDashboard() {
           <p className="text-4xl font-extrabold text-gray-900 relative z-10">{activeCount}</p>
         </div>
         
-        <div className="p-6 bg-white border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl relative overflow-hidden">
+        <div className="p-6 bg-white border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl relative overflow-hidden transition-transform hover:scale-[1.02]">
           <div className="absolute top-0 right-0 p-4 opacity-5">
             <UserCheck className="w-16 h-16" />
           </div>
           <div className="flex items-center justify-between mb-4 relative z-10">
-            <h3 className="text-sm font-semibold text-gray-500">Total Hari Ini</h3>
+            <h3 className="text-sm font-semibold text-gray-500">Total Tamu</h3>
             <div className="p-2.5 bg-gray-50 rounded-xl">
               <UserCheck className="w-5 h-5 text-gray-600" />
             </div>
           </div>
-          <p className="text-4xl font-extrabold text-gray-900 relative z-10">{todayCount}</p>
+          <p className="text-4xl font-extrabold text-gray-900 relative z-10">{filteredGuests.length}</p>
         </div>
 
-        <div className="p-6 bg-white border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl relative overflow-hidden">
+        <div className="p-6 bg-white border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl relative overflow-hidden transition-transform hover:scale-[1.02]">
           <div className="absolute top-0 right-0 p-4 opacity-5">
-            <CheckCircle2 className="w-16 h-16" />
+            <Clock className="w-16 h-16" />
           </div>
           <div className="flex items-center justify-between mb-4 relative z-10">
-            <h3 className="text-sm font-semibold text-gray-500">Tamu Selesai (Keluar)</h3>
-            <div className="p-2.5 bg-green-50 rounded-xl">
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
+            <h3 className="text-sm font-semibold text-gray-500">Rata-rata Durasi</h3>
+            <div className="p-2.5 bg-blue-50 rounded-xl">
+              <Clock className="w-5 h-5 text-blue-600" />
             </div>
           </div>
-          <p className="text-4xl font-extrabold text-gray-900 relative z-10">{completedCount}</p>
+          <p className="text-4xl font-extrabold text-gray-900 relative z-10">{avgDurationMinutes} <span className="text-sm font-bold text-gray-400 uppercase tracking-tighter">Min</span></p>
         </div>
 
-        <div className="p-6 bg-white border border-red-100 shadow-[0_4px_20_rgba(239,68,68,0.1)] rounded-2xl relative overflow-hidden">
+        <div className="p-6 bg-white border border-red-100 shadow-[0_4px_20_rgba(239,68,68,0.1)] rounded-2xl relative overflow-hidden transition-transform hover:scale-[1.02]">
           <div className="absolute top-0 right-0 p-4 opacity-5">
             <ShieldAlert className="w-16 h-16 text-red-600" />
           </div>
@@ -208,165 +283,235 @@ export default function LiveDashboard() {
         </div>
       </div>
 
-      {/* Table & Filters */}
-      <div className="bg-white border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl overflow-hidden">
-        <div className="px-6 py-5 border-b border-gray-100 space-y-4">
-          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-            <h3 className="text-base font-bold text-gray-900">Log Pengunjung</h3>
-            
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Cari nama/instansi..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500/10 focus:border-red-500 transition-all w-full md:w-56"
-                />
-              </div>
-
-              {/* Advanced Filter Group */}
-              <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-200">
-                <select
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
-                  className="pl-3 pr-8 py-1.5 text-sm bg-transparent border-none focus:ring-0 cursor-pointer font-semibold text-gray-700"
-                >
-                  <option value="all">Semua</option>
-                  <option value="daily">Harian</option>
-                  <option value="weekly">Mingguan</option>
-                  <option value="monthly">Bulanan</option>
-                  <option value="yearly">Tahunan</option>
-                </select>
-
-                {filterType !== "all" && <ChevronRight className="w-4 h-4 text-gray-300" />}
-
-                {filterType === "daily" && (
+      {!showAnalytics ? (
+        <div className="bg-white border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
+          <div className="px-6 py-5 border-b border-gray-100 space-y-4">
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+              <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-red-600" /> Log Pengunjung
+              </h3>
+              
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
-                    type="date"
-                    value={filterDate}
-                    onChange={(e) => setFilterDate(e.target.value)}
-                    className="bg-transparent border-none focus:ring-0 text-sm font-medium text-red-600 cursor-pointer"
+                    type="text"
+                    placeholder="Cari nama/instansi..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500/10 focus:border-red-500 transition-all w-full md:w-56"
                   />
-                )}
+                </div>
 
-                {filterType === "weekly" && (
-                  <input
-                    type="week"
-                    value={filterWeek}
-                    onChange={(e) => setFilterWeek(e.target.value)}
-                    className="bg-transparent border-none focus:ring-0 text-sm font-medium text-red-600 cursor-pointer"
-                  />
-                )}
-
-                {filterType === "monthly" && (
-                  <input
-                    type="month"
-                    value={filterMonth}
-                    onChange={(e) => setFilterMonth(e.target.value)}
-                    className="bg-transparent border-none focus:ring-0 text-sm font-medium text-red-600 cursor-pointer"
-                  />
-                )}
-
-                {filterType === "yearly" && (
+                {/* Advanced Filter Group */}
+                <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-200">
                   <select
-                    value={filterYear}
-                    onChange={(e) => setFilterYear(e.target.value)}
-                    className="bg-transparent border-none focus:ring-0 text-sm font-medium text-red-600 cursor-pointer pr-8"
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value)}
+                    className="pl-3 pr-8 py-1.5 text-sm bg-transparent border-none focus:ring-0 cursor-pointer font-semibold text-gray-700"
                   >
-                    {[2024, 2025, 2026].map(y => (
-                      <option key={y} value={y.toString()}>{y}</option>
-                    ))}
+                    <option value="all">Semua</option>
+                    <option value="daily">Harian</option>
+                    <option value="weekly">Mingguan</option>
+                    <option value="monthly">Bulanan</option>
+                    <option value="yearly">Tahunan</option>
                   </select>
-                )}
-              </div>
 
-              {/* Status Filter */}
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500/10 focus:border-red-500 transition-all cursor-pointer font-medium"
-              >
-                <option value="all">Semua Status</option>
-                <option value="checked_in">Di Area</option>
-                <option value="checked_out">Selesai</option>
-              </select>
+                  {filterType !== "all" && <ChevronRight className="w-4 h-4 text-gray-300" />}
+
+                  {filterType === "daily" && (
+                    <input
+                      type="date"
+                      value={filterDate}
+                      onChange={(e) => setFilterDate(e.target.value)}
+                      className="bg-transparent border-none focus:ring-0 text-sm font-medium text-red-600 cursor-pointer"
+                    />
+                  )}
+
+                  {filterType === "weekly" && (
+                    <input
+                      type="week"
+                      value={filterWeek}
+                      onChange={(e) => setFilterWeek(e.target.value)}
+                      className="bg-transparent border-none focus:ring-0 text-sm font-medium text-red-600 cursor-pointer"
+                    />
+                  )}
+
+                  {filterType === "monthly" && (
+                    <input
+                      type="month"
+                      value={filterMonth}
+                      onChange={(e) => setFilterMonth(e.target.value)}
+                      className="bg-transparent border-none focus:ring-0 text-sm font-medium text-red-600 cursor-pointer"
+                    />
+                  )}
+
+                  {filterType === "yearly" && (
+                    <select
+                      value={filterYear}
+                      onChange={(e) => setFilterYear(e.target.value)}
+                      className="bg-transparent border-none focus:ring-0 text-sm font-medium text-red-600 cursor-pointer pr-8"
+                    >
+                      {[2024, 2025, 2026].map(y => (
+                        <option key={y} value={y.toString()}>{y}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                {/* Status Filter */}
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500/10 focus:border-red-500 transition-all cursor-pointer font-medium"
+                >
+                  <option value="all">Semua Status</option>
+                  <option value="CHECKED_IN">Di Area</option>
+                  <option value="CHECKED_OUT">Selesai</option>
+                </select>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left text-gray-500">
-            <thead className="text-xs text-gray-500 uppercase bg-gray-50/50">
-              <tr>
-                <th className="px-6 py-4 font-semibold">Nama</th>
-                <th className="px-6 py-4 font-semibold">Instansi</th>
-                <th className="px-6 py-4 font-semibold">PIC</th>
-                <th className="px-6 py-4 font-semibold">Keperluan</th>
-                <th className="px-6 py-4 font-semibold">Masuk</th>
-                <th className="px-6 py-4 font-semibold">Keluar</th>
-                <th className="px-6 py-4 font-semibold">Status</th>
-                <th className="px-6 py-4 font-semibold text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredGuests.length === 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left text-gray-500">
+              <thead className="text-xs text-gray-500 uppercase bg-gray-50/50">
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                    Tidak ada data yang ditemukan untuk filter ini.
-                  </td>
+                  <th className="px-6 py-4 font-semibold">Nama</th>
+                  <th className="px-6 py-4 font-semibold">Instansi</th>
+                  <th className="px-6 py-4 font-semibold">PIC</th>
+                  <th className="px-6 py-4 font-semibold">Keperluan</th>
+                  <th className="px-6 py-4 font-semibold">Masuk</th>
+                  <th className="px-6 py-4 font-semibold">Keluar</th>
+                  <th className="px-6 py-4 font-semibold">Status</th>
+                  <th className="px-6 py-4 font-semibold text-right">Aksi</th>
                 </tr>
-              ) : (
-                filteredGuests.map((guest: any) => {
-                  const checkInTime = new Date(guest.check_in_time).getTime();
-                  const now = new Date().getTime();
-                  const isOverstay = guest.status === 'checked_in' && (now - checkInTime) > (4 * 60 * 60 * 1000);
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredGuests.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                      Tidak ada data yang ditemukan untuk filter ini.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredGuests.map((guest: any) => {
+                    const checkInTime = new Date(guest.check_in_time).getTime();
+                    const now = new Date().getTime();
+                    const isOverstay = guest.status === 'CHECKED_IN' && (now - checkInTime) > (4 * 60 * 60 * 1000);
 
-                  return (
-                    <tr key={guest._id || guest.id} className={`hover:bg-gray-50/50 transition-colors ${isOverstay ? 'bg-red-50/50' : ''}`}>
-                      <td className="px-6 py-4 font-medium text-gray-900">{guest.name}</td>
-                      <td className="px-6 py-4">{guest.agency}</td>
-                      <td className="px-6 py-4 font-medium text-gray-700">{guest.host || "-"}</td>
-                      <td className="px-6 py-4">{guest.purpose}</td>
-                      <td className="px-6 py-4 font-medium">{new Date(guest.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</td>
-                      <td className="px-6 py-4 font-mono text-gray-600">
-                        {guest.status === 'checked_out' && guest.check_out_time
-                          ? new Date(guest.check_out_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-                          : '-'}
-                      </td>
-                      <td className="px-6 py-4">
-                        {guest.status === 'checked_in' ? (
-                          <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full border ${isOverstay ? 'text-red-700 bg-red-50 border-red-100' : 'text-blue-700 bg-blue-50 border-blue-100'}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${isOverstay ? 'bg-red-600 animate-pulse' : 'bg-blue-600'}`}></span>
-                            {isOverstay ? 'Overstay' : 'Di Area'}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-3 py-1 text-xs font-semibold text-gray-600 bg-gray-100 rounded-full border border-gray-200">
-                            Selesai
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        {guest.status === 'checked_in' && (
-                          <button
-                            onClick={() => handleForceCheckout(guest.qr_code)}
-                            className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-                            title="Force Check-Out"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                    return (
+                      <tr key={guest._id || guest.id} className={`hover:bg-gray-50/50 transition-colors ${isOverstay ? 'bg-red-50/50' : ''}`}>
+                        <td className="px-6 py-4 font-medium text-gray-900">{guest.name}</td>
+                        <td className="px-6 py-4">{guest.agency}</td>
+                        <td className="px-6 py-4 font-medium text-gray-700">{guest.host || "-"}</td>
+                        <td className="px-6 py-4">{guest.purpose}</td>
+                        <td className="px-6 py-4 font-medium">{new Date(guest.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</td>
+                        <td className="px-6 py-4 font-mono text-gray-600">
+                          {guest.status === 'CHECKED_OUT' && guest.check_out_time
+                            ? new Date(guest.check_out_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+                            : '-'}
+                        </td>
+                        <td className="px-6 py-4">
+                          {guest.status === 'CHECKED_IN' ? (
+                            <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full border ${isOverstay ? 'text-red-700 bg-red-50 border-red-100' : 'text-blue-700 bg-blue-50 border-blue-100'}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${isOverstay ? 'bg-red-600 animate-pulse' : 'bg-blue-600'}`}></span>
+                              {isOverstay ? 'Overstay' : 'Di Area'}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-3 py-1 text-xs font-semibold text-gray-600 bg-gray-100 rounded-full border border-gray-200">
+                              Selesai
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          {guest.status === 'CHECKED_IN' && (
+                            <button
+                              onClick={() => handleForceCheckout(guest.qr_code)}
+                              className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                              title="Force Check-Out"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in slide-in-from-bottom-4 duration-500">
+          {/* Hourly Arrivals Chart */}
+          <div className="p-6 bg-white border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl">
+            <h3 className="text-base font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-red-600" /> Waktu Kedatangan Terpadat
+            </h3>
+            <div className="h-[300px]">
+              <Bar 
+                data={{
+                  labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                  datasets: [{
+                    label: 'Jumlah Tamu',
+                    data: hourlyData,
+                    backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                    borderRadius: 8,
+                  }]
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: { legend: { display: false } },
+                  scales: {
+                    y: { beginAtZero: true, grid: { display: false } },
+                    x: { grid: { display: false } }
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Purpose Distribution Chart */}
+          <div className="p-6 bg-white border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl">
+            <h3 className="text-base font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <PieChart className="w-5 h-5 text-red-600" /> Distribusi Kategori Tamu
+            </h3>
+            <div className="h-[300px] flex items-center justify-center">
+              <Pie 
+                data={{
+                  labels: Object.keys(purposeCounts),
+                  datasets: [{
+                    data: Object.values(purposeCounts),
+                    backgroundColor: colors,
+                    borderWidth: 0,
+                  }]
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: { position: 'right', labels: { usePointStyle: true, padding: 20 } }
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Tips for Thesis Panel */}
+          <div className="lg:col-span-2 p-6 bg-gradient-to-r from-red-600 to-red-700 rounded-2xl text-white shadow-xl">
+            <h4 className="font-bold text-lg mb-2">Insight Business Intelligence (BI)</h4>
+            <p className="text-red-50 text-sm opacity-90 leading-relaxed">
+              Analitik di atas menunjukkan bahwa waktu puncak kunjungan adalah pukul <strong>{hourlyData.indexOf(Math.max(...hourlyData))}:00</strong>. 
+              Mayoritas tamu datang dengan keperluan <strong>{Object.entries(purposeCounts).sort((a,b) => b[1]-a[1])[0]?.[0] || '-'}</strong>. 
+              Data ini dapat digunakan manajemen Pertamina untuk mengoptimalkan jumlah petugas keamanan pada jam-jam sibuk tersebut.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
