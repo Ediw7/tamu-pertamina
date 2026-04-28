@@ -55,14 +55,14 @@ export default function CheckInForm() {
 
   return (
     <div className="w-full">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Registrasi Tamu</h2>
-        <p className="mt-1 text-sm text-gray-500">
+      <div className="mb-4">
+        <h2 className="text-xl font-bold text-gray-900 tracking-tight">Registrasi Tamu</h2>
+        <p className="mt-0.5 text-xs text-gray-500">
           Silakan lengkapi data diri Anda di bawah ini.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-3">
         <div>
           <label className="block mb-1.5 text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama Lengkap</label>
           <div className="relative">
@@ -184,7 +184,7 @@ export default function CheckInForm() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="flex items-center justify-center w-full gap-2 px-5 py-3 text-sm font-semibold text-white transition-all bg-red-600 rounded-xl hover:bg-red-700 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed mt-4"
+          className="flex items-center justify-center w-full gap-2 px-5 py-2.5 text-sm font-semibold text-white transition-all bg-red-600 rounded-xl hover:bg-red-700 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed mt-2"
         >
           {isSubmitting ? (
             <span className="flex items-center gap-2">

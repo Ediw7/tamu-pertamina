@@ -62,92 +62,145 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!isAuthenticated) {
     return (
-      <div className="flex justify-center min-h-screen bg-gray-50/50">
-        <div className="w-full max-w-md bg-white shadow-sm sm:border-x sm:border-gray-100 min-h-screen sm:min-h-0 sm:my-8 sm:rounded-3xl overflow-hidden relative">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50/50 p-0 sm:p-4 lg:p-8 font-sans">
+        <div className="w-full max-w-md lg:max-w-5xl bg-white shadow-2xl lg:flex min-h-screen sm:min-h-0 sm:max-h-[95vh] sm:rounded-[2.5rem] sm:overflow-hidden relative border border-gray-100">
           
-          {/* Header Section */}
-          <div className="px-6 pt-8 pb-6 bg-red-600 rounded-b-3xl relative overflow-hidden">
-            {/* Subtle pattern/gradient */}
-            <div className="absolute inset-0 z-0 opacity-20 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/40 via-transparent to-transparent"></div>
+          {/* Left Branding Side (Desktop Only) */}
+          <div className="hidden lg:flex lg:w-5/12 bg-red-600 relative overflow-hidden flex-col justify-between p-8 text-white">
+            <div className="absolute inset-0 z-0 opacity-30 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/40 via-transparent to-transparent"></div>
             
             <div className="relative z-10">
               <Link 
                 href="/" 
-                className="inline-flex items-center gap-2 mb-6 text-sm font-medium text-red-100 transition-colors hover:text-white"
+                className="inline-flex items-center gap-2 mb-4 text-sm font-medium text-red-100 transition-all hover:text-white hover:translate-x-[-4px]"
               >
-                <ArrowLeft className="w-4 h-4" />
-                Beranda
+                <ArrowLeft className="w-5 h-5" />
+                Kembali
               </Link>
+            </div>
 
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center p-2 bg-white rounded-xl shadow-sm">
-                  <Image src="/pertamina.png" alt="Logo Pertamina" width={32} height={32} className="object-contain" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-white tracking-tight">Akses Admin</h1>
-                  <p className="text-xs text-red-200">PT Pertamina Patra Niaga</p>
-                </div>
+            <div className="flex-1 flex flex-col justify-center items-center text-center relative z-10 space-y-6">
+              <div className="inline-flex items-center justify-center p-4 bg-white rounded-2xl shadow-xl">
+                <Image src="/pertamina.png" alt="Logo Pertamina" width={64} height={64} className="object-contain" />
               </div>
+              <div className="space-y-2">
+                <h1 className="text-3xl font-black text-white leading-tight tracking-tight uppercase">
+                  Akses Admin <br /> Integrated Terminal
+                </h1>
+                <div className="h-1 w-20 bg-white/30 rounded-full mx-auto"></div>
+                <p className="text-red-100 text-lg font-medium opacity-90">
+                  Sistem Informasi Manajemen Tamu Digital <br /> PT Pertamina Patra Niaga.
+                </p>
+              </div>
+            </div>
+
+            <div className="relative z-10 p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10">
+              <h3 className="text-sm font-bold uppercase tracking-widest mb-2 text-red-100 flex items-center gap-2">
+                <Lock className="w-4 h-4" /> Akses Terbatas
+              </h3>
+              <p className="text-xs leading-relaxed text-red-50/80">
+                Panel ini hanya diperuntukkan bagi admin operasional dan petugas keamanan. Harap gunakan kredensial yang telah didaftarkan.
+              </p>
             </div>
           </div>
 
-          {/* Form Section */}
-          <div className="px-6 py-8">
-            <div className="mb-6 text-left">
-              <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Login Panel</h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Masukkan username dan password admin.
-              </p>
+          {/* Right Form Side */}
+          <div className="flex-1 flex flex-col bg-white overflow-y-auto">
+            {/* Mobile Header (Hidden on Desktop) */}
+            <div className="lg:hidden px-6 pt-8 pb-10 bg-red-600 rounded-b-[2.5rem] relative overflow-hidden shadow-lg shadow-red-600/20">
+              <div className="absolute inset-0 z-0 opacity-20 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/40 via-transparent to-transparent"></div>
+              
+              <div className="relative z-10">
+                <Link 
+                  href="/" 
+                  className="inline-flex items-center gap-2 mb-6 text-sm font-medium text-red-100 transition-colors hover:text-white"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Beranda
+                </Link>
+
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-center p-2.5 bg-white rounded-xl shadow-md">
+                    <Image src="/pertamina.png" alt="Logo Pertamina" width={32} height={32} className="object-contain" />
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-bold text-white tracking-tight leading-tight">Akses Admin</h1>
+                    <p className="text-[10px] text-red-200 uppercase tracking-widest font-semibold">IT Semarang</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label className="block mb-1.5 text-xs font-semibold text-gray-600 uppercase tracking-wider">Username</label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => {
-                    setUsername(e.target.value);
-                    setError(false);
-                  }}
-                  className={`block w-full py-2.5 px-4 text-sm text-gray-900 bg-gray-50/50 border rounded-xl focus:bg-white focus:ring-2 focus:outline-none transition-all ${
-                    error ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-gray-200 focus:ring-red-500/20 focus:border-red-500'
-                  }`}
-                  placeholder="admin"
-                  autoFocus
-                  disabled={isLoading}
-                />
+            {/* Form Content */}
+            <div className="flex-1 flex flex-col justify-center px-6 py-10 lg:px-16 lg:py-16">
+              <div className="max-w-md mx-auto w-full">
+                <div className="mb-8 text-left">
+                  <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Login Panel</h2>
+                  <p className="mt-2 text-sm text-gray-500">
+                    Masukkan username dan password admin Anda.
+                  </p>
+                </div>
+
+                <form onSubmit={handleLogin} className="space-y-5">
+                  <div>
+                    <label className="block mb-1.5 text-xs font-semibold text-gray-600 uppercase tracking-wider">Username</label>
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => {
+                        setUsername(e.target.value);
+                        setError(false);
+                      }}
+                      className={`block w-full py-3 px-4 text-sm text-gray-900 bg-gray-50/50 border rounded-xl focus:bg-white focus:ring-4 focus:outline-none transition-all ${
+                        error ? 'border-red-500 focus:ring-red-500/10' : 'border-gray-200 focus:ring-red-500/10 focus:border-red-500'
+                      }`}
+                      placeholder="admin"
+                      autoFocus
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block mb-1.5 text-xs font-semibold text-gray-600 uppercase tracking-wider">Password</label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setError(false);
+                      }}
+                      className={`block w-full py-3 px-4 text-sm text-gray-900 bg-gray-50/50 border rounded-xl focus:bg-white focus:ring-4 focus:outline-none transition-all ${
+                        error ? 'border-red-500 focus:ring-red-500/10' : 'border-gray-200 focus:ring-red-500/10 focus:border-red-500'
+                      }`}
+                      placeholder="••••••••"
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="flex items-center gap-2 p-3 text-sm text-red-700 bg-red-50 rounded-lg animate-in fade-in duration-300">
+                      <div className="w-1.5 h-1.5 bg-red-600 rounded-full"></div>
+                      Kredensial salah, silakan coba lagi.
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={!username || !password || isLoading}
+                    className="flex items-center justify-center w-full gap-2 px-5 py-3.5 text-sm font-semibold text-white transition-all bg-red-600 rounded-xl hover:bg-red-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-6 shadow-lg shadow-red-600/20"
+                  >
+                    {isLoading ? (
+                      <svg className="w-5 h-5 text-white animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    ) : (
+                      <>Masuk ke Dashboard <ArrowRight className="w-4 h-4" /></>
+                    )}
+                  </button>
+                </form>
               </div>
-
-              <div>
-                <label className="block mb-1.5 text-xs font-semibold text-gray-600 uppercase tracking-wider">Password</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    setError(false);
-                  }}
-                  className={`block w-full py-2.5 px-4 text-sm text-gray-900 bg-gray-50/50 border rounded-xl focus:bg-white focus:ring-2 focus:outline-none transition-all ${
-                    error ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-gray-200 focus:ring-red-500/20 focus:border-red-500'
-                  }`}
-                  placeholder="••••••••"
-                  disabled={isLoading}
-                />
-              </div>
-
-              {error && <p className="text-sm text-red-600 mt-2">Kredensial salah, silakan coba lagi.</p>}
-
-              <button
-                type="submit"
-                disabled={!username || !password || isLoading}
-                className="flex items-center justify-center w-full gap-2 px-5 py-3 text-sm font-semibold text-white transition-all bg-red-600 rounded-xl hover:bg-red-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-4"
-              >
-                {isLoading ? "Memverifikasi..." : (
-                  <>Masuk Dashboard <ArrowRight className="w-4 h-4" /></>
-                )}
-              </button>
-            </form>
+            </div>
           </div>
         </div>
       </div>
@@ -155,7 +208,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex w-full min-h-screen bg-[#f4f7f6]">
+    <div className="flex w-full min-h-screen bg-[#f4f7f6] font-sans">
       {/* Sidebar */}
       <div className="hidden w-64 bg-white border-r border-gray-100 shadow-[2px_0_15px_-3px_rgba(0,0,0,0.03)] md:flex md:flex-col z-10 relative">
         <div className="flex items-center gap-3 px-6 h-20 border-b border-gray-100">
