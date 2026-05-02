@@ -215,7 +215,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex w-full min-h-screen bg-[#f4f7f6] font-sans">
       {/* Sidebar */}
-      <div className="hidden w-64 bg-white border-r border-gray-100 shadow-[2px_0_15px_-3px_rgba(0,0,0,0.03)] md:flex md:flex-col z-10 relative">
+      <div className="hidden w-64 bg-white border-r border-gray-100 shadow-[2px_0_15px_-3px_rgba(0,0,0,0.03)] md:flex md:flex-col z-20 sticky top-0 h-screen">
         <div className="flex items-center gap-3 px-6 h-20 border-b border-gray-100">
           <Image src="/pertamina.png" alt="Logo" width={32} height={32} className="object-contain" />
           <div className="flex flex-col">
@@ -250,7 +250,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </nav>
         </div>
         
-        <div className="p-4 border-t border-gray-100 bg-gray-50/50 space-y-2">
+        <div className="p-4 border-t border-gray-100 bg-gray-50/50">
           <button
             onClick={handleLogout}
             className="flex items-center w-full gap-2 px-4 py-3 text-sm font-medium text-red-600 rounded-xl hover:bg-red-50 transition-colors"
@@ -258,13 +258,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <LogOut className="w-4 h-4" />
             Keluar (Lock)
           </button>
-          <Link
-            href="/"
-            className="flex items-center w-full gap-2 px-4 py-3 text-sm font-medium text-gray-500 rounded-xl hover:bg-white hover:text-gray-900 hover:shadow-sm transition-all"
-          >
-            <Home className="w-4 h-4" />
-            Kembali ke Web
-          </Link>
         </div>
       </div>
 

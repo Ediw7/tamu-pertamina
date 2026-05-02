@@ -40,6 +40,8 @@ export default function LiveDashboard() {
   const [completedCount, setCompletedCount] = useState(0);
   const [overstayCount, setOverstayCount] = useState(0);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // States for search and filtering
   const [searchQuery, setSearchQuery] = useState("");
@@ -86,6 +88,11 @@ export default function LiveDashboard() {
     const interval = setInterval(fetchGuests, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, filterType, filterDate, filterWeek, filterMonth, filterYear]);
 
   const handleExportCSV = () => {
     const headers = ["Nama", "Instansi", "PIC", "Keperluan", "Masuk", "Keluar", "Status"];
@@ -166,6 +173,13 @@ export default function LiveDashboard() {
     return matchesSearch && matchesStatus && matchesTime;
   });
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredGuests.length / itemsPerPage);
+  const paginatedGuests = filteredGuests.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   // --- Analytics Data Processing ---
 
   // 1. Hourly Arrival Distribution
@@ -231,9 +245,6 @@ export default function LiveDashboard() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <div className="p-6 bg-white border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl relative overflow-hidden transition-transform hover:scale-[1.02]">
-          <div className="absolute top-0 right-0 p-4 opacity-5">
-            <Users className="w-16 h-16" />
-          </div>
           <div className="flex items-center justify-between mb-4 relative z-10">
             <h3 className="text-sm font-semibold text-gray-500">Tamu Aktif Area</h3>
             <div className="p-2.5 bg-red-50 rounded-xl">
@@ -244,9 +255,6 @@ export default function LiveDashboard() {
         </div>
 
         <div className="p-6 bg-white border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl relative overflow-hidden transition-transform hover:scale-[1.02]">
-          <div className="absolute top-0 right-0 p-4 opacity-5">
-            <UserCheck className="w-16 h-16" />
-          </div>
           <div className="flex items-center justify-between mb-4 relative z-10">
             <h3 className="text-sm font-semibold text-gray-500">Total Tamu</h3>
             <div className="p-2.5 bg-gray-50 rounded-xl">
@@ -257,9 +265,6 @@ export default function LiveDashboard() {
         </div>
 
         <div className="p-6 bg-white border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl relative overflow-hidden transition-transform hover:scale-[1.02]">
-          <div className="absolute top-0 right-0 p-4 opacity-5">
-            <Clock className="w-16 h-16" />
-          </div>
           <div className="flex items-center justify-between mb-4 relative z-10">
             <h3 className="text-sm font-semibold text-gray-500">Rata-rata Durasi</h3>
             <div className="p-2.5 bg-blue-50 rounded-xl">
@@ -270,9 +275,6 @@ export default function LiveDashboard() {
         </div>
 
         <div className="p-6 bg-white border border-red-100 shadow-[0_4px_20_rgba(239,68,68,0.1)] rounded-2xl relative overflow-hidden transition-transform hover:scale-[1.02]">
-          <div className="absolute top-0 right-0 p-4 opacity-5">
-            <ShieldAlert className="w-16 h-16 text-red-600" />
-          </div>
           <div className="flex items-center justify-between mb-4 relative z-10">
             <h3 className="text-sm font-semibold text-red-600">Overstay (&gt;4h)</h3>
             <div className="p-2.5 bg-red-50 rounded-xl">
@@ -369,6 +371,21 @@ export default function LiveDashboard() {
               <option value="CHECKED_IN">Di Area</option>
               <option value="CHECKED_OUT">Selesai</option>
             </select>
+
+            {/* Items Per Page */}
+            <div className="flex items-center gap-2 ml-2">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Show</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                className="px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500/10 focus:border-red-500 transition-all cursor-pointer font-bold text-gray-700"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -403,7 +420,7 @@ export default function LiveDashboard() {
                     </td>
                   </tr>
                 ) : (
-                  filteredGuests.map((guest: any) => {
+                  paginatedGuests.map((guest: any) => {
                     const checkInTime = new Date(guest.check_in_time).getTime();
                     const now = new Date().getTime();
                     const isOverstay = guest.status === 'CHECKED_IN' && (now - checkInTime) > (4 * 60 * 60 * 1000);
@@ -450,6 +467,56 @@ export default function LiveDashboard() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <p className="text-xs text-gray-500 font-medium">
+                Menampilkan <span className="font-bold text-gray-900">{(currentPage - 1) * itemsPerPage + 1}</span> sampai <span className="font-bold text-gray-900">{Math.min(currentPage * itemsPerPage, filteredGuests.length)}</span> dari <span className="font-bold text-gray-900">{filteredGuests.length}</span> data
+              </p>
+              
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  Previous
+                </button>
+                
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  // Basic pagination window logic
+                  let pageNum = i + 1;
+                  if (totalPages > 5 && currentPage > 3) {
+                    pageNum = currentPage - 3 + i + 1;
+                  }
+                  if (pageNum > totalPages) return null;
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-8 h-8 flex items-center justify-center text-xs font-bold rounded-lg transition-all ${
+                        currentPage === pageNum
+                          ? "bg-red-600 text-white shadow-md shadow-red-500/20"
+                          : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in slide-in-from-bottom-4 duration-500">
