@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  Users, UserCheck, Clock, ShieldAlert, CheckCircle2, Download, 
+import {
+  Users, UserCheck, Clock, ShieldAlert, CheckCircle2, Download,
   Trash2, Search, Filter, Calendar, ChevronRight, BarChart3, PieChart, Activity
 } from "lucide-react";
 import { Guest } from "@/types/guest";
@@ -40,7 +40,7 @@ export default function LiveDashboard() {
   const [completedCount, setCompletedCount] = useState(0);
   const [overstayCount, setOverstayCount] = useState(0);
   const [showAnalytics, setShowAnalytics] = useState(false);
-  
+
   // States for search and filtering
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -52,7 +52,7 @@ export default function LiveDashboard() {
     const d = new Date();
     const dayNum = d.getUTCDay() || 7;
     d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
     const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
     return `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
   });
@@ -64,14 +64,14 @@ export default function LiveDashboard() {
         const data = await response.json();
         if (response.ok) {
           setGuests(data);
-          
+
           const now = new Date().getTime();
           const active = data.filter((g: any) => g.status === 'CHECKED_IN');
           setActiveCount(active.length);
-          
+
           const overstay = active.filter((g: any) => (now - new Date(g.check_in_time).getTime()) > (4 * 60 * 60 * 1000));
           setOverstayCount(overstay.length);
-          
+
           const today = new Date().toDateString();
           const todayGuests = data.filter((g: any) => new Date(g.check_in_time).toDateString() === today);
           setTodayCount(todayGuests.length);
@@ -113,14 +113,14 @@ export default function LiveDashboard() {
 
   const handleForceCheckout = async (qrCode: string) => {
     if (!confirm("Apakah Anda yakin ingin melakukan Force Check-Out pada tamu ini?")) return;
-    
+
     try {
       const response = await fetch('/api/guests/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ qr_code: qrCode })
       });
-      
+
       if (response.ok) {
         const res = await fetch('/api/guests');
         const data = await res.json();
@@ -137,13 +137,13 @@ export default function LiveDashboard() {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
     const dayNum = d.getUTCDay() || 7;
     d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
     const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
     return `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
   };
 
   const filteredGuests = guests.filter(guest => {
-    const matchesSearch = 
+    const matchesSearch =
       guest.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       guest.agency.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (guest.host && guest.host.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -167,7 +167,7 @@ export default function LiveDashboard() {
   });
 
   // --- Analytics Data Processing ---
-  
+
   // 1. Hourly Arrival Distribution
   const hourlyData = Array(24).fill(0);
   filteredGuests.forEach(g => {
@@ -242,7 +242,7 @@ export default function LiveDashboard() {
           </div>
           <p className="text-4xl font-extrabold text-gray-900 relative z-10">{activeCount}</p>
         </div>
-        
+
         <div className="p-6 bg-white border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl relative overflow-hidden transition-transform hover:scale-[1.02]">
           <div className="absolute top-0 right-0 p-4 opacity-5">
             <UserCheck className="w-16 h-16" />
@@ -283,95 +283,102 @@ export default function LiveDashboard() {
         </div>
       </div>
 
+      {/* Global Filters */}
+      <div className="bg-white border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl p-5">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+            <Filter className="w-5 h-5 text-red-600" /> Filter Data
+          </h3>
+          
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Cari nama/instansi..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500/10 focus:border-red-500 transition-all w-full md:w-56"
+              />
+            </div>
+
+            {/* Advanced Filter Group */}
+            <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-200">
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="pl-3 pr-8 py-1.5 text-sm bg-transparent border-none focus:ring-0 cursor-pointer font-semibold text-gray-700"
+              >
+                <option value="all">Semua</option>
+                <option value="daily">Harian</option>
+                <option value="weekly">Mingguan</option>
+                <option value="monthly">Bulanan</option>
+                <option value="yearly">Tahunan</option>
+              </select>
+
+              {filterType !== "all" && <ChevronRight className="w-4 h-4 text-gray-300" />}
+
+              {filterType === "daily" && (
+                <input
+                  type="date"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                  className="bg-transparent border-none focus:ring-0 text-sm font-medium text-red-600 cursor-pointer"
+                />
+              )}
+
+              {filterType === "weekly" && (
+                <input
+                  type="week"
+                  value={filterWeek}
+                  onChange={(e) => setFilterWeek(e.target.value)}
+                  className="bg-transparent border-none focus:ring-0 text-sm font-medium text-red-600 cursor-pointer"
+                />
+              )}
+
+              {filterType === "monthly" && (
+                <input
+                  type="month"
+                  value={filterMonth}
+                  onChange={(e) => setFilterMonth(e.target.value)}
+                  className="bg-transparent border-none focus:ring-0 text-sm font-medium text-red-600 cursor-pointer"
+                />
+              )}
+
+              {filterType === "yearly" && (
+                <select
+                  value={filterYear}
+                  onChange={(e) => setFilterYear(e.target.value)}
+                  className="bg-transparent border-none focus:ring-0 text-sm font-medium text-red-600 cursor-pointer pr-8"
+                >
+                  {[2024, 2025, 2026].map(y => (
+                    <option key={y} value={y.toString()}>{y}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Status Filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500/10 focus:border-red-500 transition-all cursor-pointer font-medium"
+            >
+              <option value="all">Semua Status</option>
+              <option value="CHECKED_IN">Di Area</option>
+              <option value="CHECKED_OUT">Selesai</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       {!showAnalytics ? (
         <div className="bg-white border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
-          <div className="px-6 py-5 border-b border-gray-100 space-y-4">
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-              <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                <Activity className="w-5 h-5 text-red-600" /> Log Pengunjung
-              </h3>
-              
-              <div className="flex flex-wrap items-center gap-3">
-                {/* Search */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Cari nama/instansi..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500/10 focus:border-red-500 transition-all w-full md:w-56"
-                  />
-                </div>
-
-                {/* Advanced Filter Group */}
-                <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-200">
-                  <select
-                    value={filterType}
-                    onChange={(e) => setFilterType(e.target.value)}
-                    className="pl-3 pr-8 py-1.5 text-sm bg-transparent border-none focus:ring-0 cursor-pointer font-semibold text-gray-700"
-                  >
-                    <option value="all">Semua</option>
-                    <option value="daily">Harian</option>
-                    <option value="weekly">Mingguan</option>
-                    <option value="monthly">Bulanan</option>
-                    <option value="yearly">Tahunan</option>
-                  </select>
-
-                  {filterType !== "all" && <ChevronRight className="w-4 h-4 text-gray-300" />}
-
-                  {filterType === "daily" && (
-                    <input
-                      type="date"
-                      value={filterDate}
-                      onChange={(e) => setFilterDate(e.target.value)}
-                      className="bg-transparent border-none focus:ring-0 text-sm font-medium text-red-600 cursor-pointer"
-                    />
-                  )}
-
-                  {filterType === "weekly" && (
-                    <input
-                      type="week"
-                      value={filterWeek}
-                      onChange={(e) => setFilterWeek(e.target.value)}
-                      className="bg-transparent border-none focus:ring-0 text-sm font-medium text-red-600 cursor-pointer"
-                    />
-                  )}
-
-                  {filterType === "monthly" && (
-                    <input
-                      type="month"
-                      value={filterMonth}
-                      onChange={(e) => setFilterMonth(e.target.value)}
-                      className="bg-transparent border-none focus:ring-0 text-sm font-medium text-red-600 cursor-pointer"
-                    />
-                  )}
-
-                  {filterType === "yearly" && (
-                    <select
-                      value={filterYear}
-                      onChange={(e) => setFilterYear(e.target.value)}
-                      className="bg-transparent border-none focus:ring-0 text-sm font-medium text-red-600 cursor-pointer pr-8"
-                    >
-                      {[2024, 2025, 2026].map(y => (
-                        <option key={y} value={y.toString()}>{y}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                {/* Status Filter */}
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500/10 focus:border-red-500 transition-all cursor-pointer font-medium"
-                >
-                  <option value="all">Semua Status</option>
-                  <option value="CHECKED_IN">Di Area</option>
-                  <option value="CHECKED_OUT">Selesai</option>
-                </select>
-              </div>
-            </div>
+          <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/30">
+            <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+              <Activity className="w-4 h-4 text-red-600" /> Log Pengunjung ({filteredGuests.length})
+            </h3>
           </div>
 
           <div className="overflow-x-auto">
@@ -452,9 +459,9 @@ export default function LiveDashboard() {
               <BarChart3 className="w-5 h-5 text-red-600" /> Waktu Kedatangan Terpadat
             </h3>
             <div className="h-[300px]">
-              <Bar 
+              <Bar
                 data={{
-                  labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                  labels: Array.from({ length: 24 }, (_, i) => `${i}:00`),
                   datasets: [{
                     label: 'Jumlah Tamu',
                     data: hourlyData,
@@ -481,7 +488,7 @@ export default function LiveDashboard() {
               <PieChart className="w-5 h-5 text-red-600" /> Distribusi Kategori Tamu
             </h3>
             <div className="h-[300px] flex items-center justify-center">
-              <Pie 
+              <Pie
                 data={{
                   labels: Object.keys(purposeCounts),
                   datasets: [{
@@ -505,8 +512,8 @@ export default function LiveDashboard() {
           <div className="lg:col-span-2 p-6 bg-gradient-to-r from-red-600 to-red-700 rounded-2xl text-white shadow-xl">
             <h4 className="font-bold text-lg mb-2">Insight Business Intelligence (BI)</h4>
             <p className="text-red-50 text-sm opacity-90 leading-relaxed">
-              Analitik di atas menunjukkan bahwa waktu puncak kunjungan adalah pukul <strong>{hourlyData.indexOf(Math.max(...hourlyData))}:00</strong>. 
-              Mayoritas tamu datang dengan keperluan <strong>{Object.entries(purposeCounts).sort((a,b) => b[1]-a[1])[0]?.[0] || '-'}</strong>. 
+              Analitik di atas menunjukkan bahwa waktu puncak kunjungan adalah pukul <strong>{hourlyData.indexOf(Math.max(...hourlyData))}:00</strong>.
+              Mayoritas tamu datang dengan keperluan <strong>{Object.entries(purposeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '-'}</strong>.
               Data ini dapat digunakan manajemen Pertamina untuk mengoptimalkan jumlah petugas keamanan pada jam-jam sibuk tersebut.
             </p>
           </div>
