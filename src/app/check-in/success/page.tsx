@@ -10,20 +10,6 @@ import { Suspense } from "react";
 function SuccessContent() {
   const searchParams = useSearchParams();
   const guestId = searchParams.get('id') || "GUEST-UNKNOWN";
-  const qrRef = useRef<HTMLDivElement>(null);
-
-  const downloadQRCode = () => {
-    const canvas = qrRef.current?.querySelector('canvas');
-    if (canvas) {
-      const url = canvas.toDataURL("image/png");
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `QR_PERTAMINA_${guestId}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
 
   return (
     <div className="w-full max-w-sm animate-in fade-in duration-500">
@@ -37,7 +23,7 @@ function SuccessContent() {
           Simpan QR Code ini untuk akses keluar area.
         </p>
 
-        <div ref={qrRef} className="flex justify-center p-4 mx-auto my-8 bg-white border border-gray-100 rounded-2xl w-fit">
+        <div className="flex justify-center p-4 mx-auto my-8 bg-white border border-gray-100 rounded-2xl w-fit">
           <QRCodeCanvas 
             value={guestId} 
             size={180}
@@ -51,14 +37,6 @@ function SuccessContent() {
         </div>
 
         <div className="space-y-3">
-          <button
-            onClick={downloadQRCode}
-            className="flex items-center justify-center w-full gap-2 py-3 text-sm font-semibold text-white bg-gray-900 rounded-xl hover:bg-gray-800 transition-all active:scale-95"
-          >
-            <Download className="w-4 h-4" />
-            Simpan Gambar QR
-          </button>
-          
           <Link
             href="/"
             className="flex items-center justify-center w-full gap-2 py-3 text-sm font-semibold text-gray-600 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100"

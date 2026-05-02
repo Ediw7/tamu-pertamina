@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { User, Briefcase, Phone, FileText, ArrowRight, ShieldCheck, Info, ArrowLeft } from "lucide-react";
+import { User, Briefcase, Phone, FileText, ArrowRight, ShieldCheck, Info, ArrowLeft, QrCode } from "lucide-react";
 
 export default function CheckInForm() {
   const router = useRouter();
@@ -17,6 +17,15 @@ export default function CheckInForm() {
     host: "",
     purpose: "",
   });
+  const [lastGuestId, setLastGuestId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check for existing guest ID in local storage
+    const savedId = localStorage.getItem("lastGuestId");
+    if (savedId) {
+      setLastGuestId(savedId);
+    }
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     let value = e.target.value;
@@ -46,7 +55,10 @@ export default function CheckInForm() {
       
       const data = await response.json();
       
+      
       if (response.ok) {
+        // Save ID to local storage for retrieval if they forget to screenshot
+        localStorage.setItem("lastGuestId", data.guest.qr_code);
         router.push(`/check-in/success?id=${data.guest.qr_code}`);
       } else {
         alert("Terjadi kesalahan: " + data.error);
@@ -127,6 +139,24 @@ export default function CheckInForm() {
 
   return (
     <div className="w-full animate-in fade-in duration-500">
+      {lastGuestId && (
+        <button
+          onClick={() => router.push(`/check-in/success?id=${lastGuestId}`)}
+          className="flex items-center justify-between w-full p-4 mb-8 bg-blue-50 border border-blue-100 rounded-2xl hover:bg-blue-100 transition-all group animate-in slide-in-from-top-4 duration-500"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-blue-600 rounded-xl text-white shadow-md shadow-blue-600/20">
+              <QrCode className="w-5 h-5" />
+            </div>
+            <div className="text-left">
+              <p className="text-xs font-bold text-blue-900">Lihat QR Code Terakhir</p>
+              <p className="text-[10px] text-blue-700 font-medium">Klik jika Anda lupa men-screenshot QR sebelumnya</p>
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-blue-400 group-hover:translate-x-1 transition-transform" />
+        </button>
+      )}
+
       <div className="mb-4">
         <h2 className="text-xl font-bold text-gray-900 tracking-tight">Registrasi Tamu</h2>
         <p className="mt-0.5 text-xs text-gray-500">
