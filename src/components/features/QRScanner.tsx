@@ -1,61 +1,80 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { useEffect, useState, useRef } from "react";
+import { Html5Qrcode } from "html5-qrcode";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function QRScanner() {
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const isProcessingRef = useRef(false);
 
   useEffect(() => {
-    // Only initialize scanner on client side
-    const scanner = new Html5QrcodeScanner(
-      "reader",
-      { fps: 10, qrbox: { width: 250, height: 250 } },
-      false
-    );
+    let isMounted = true;
+    let scanner: Html5Qrcode | null = null;
+    let isScannerStarted = false;
 
-    scanner.render(
-      async (decodedText) => {
-        // Stop scanning to prevent multiple API calls
-        scanner.pause();
-        
-        try {
-          const response = await fetch('/api/guests/checkout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ qr_code: decodedText })
-          });
-          
-          if (response.ok) {
-            setScanResult(decodedText);
-            setStatus("success");
-            scanner.clear();
-          } else {
-            const data = await response.json();
-            alert("Gagal Check-Out: " + (data.error || "QR tidak valid"));
-            scanner.resume();
+    // Use a small delay to prevent double-initialization in React Strict Mode
+    const initTimer = setTimeout(async () => {
+      if (!isMounted) return;
+
+      try {
+        scanner = new Html5Qrcode("reader");
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          async (decodedText) => {
+            // Prevent processing if already processing or unmounted
+            if (!isMounted || isProcessingRef.current) return;
+            isProcessingRef.current = true;
+
+            try {
+              const response = await fetch('/api/guests/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ qr_code: decodedText })
+              });
+
+              if (response.ok) {
+                setScanResult(decodedText);
+                setStatus("success");
+                // Stop scanner on success
+                if (scanner && isScannerStarted) {
+                  scanner.stop().catch(console.error);
+                }
+              } else {
+                const data = await response.json();
+                alert("Gagal Check-Out: " + (data.error || "QR tidak valid"));
+                isProcessingRef.current = false; // allow scanning again
+              }
+            } catch (error) {
+              alert("Terjadi kesalahan jaringan.");
+              isProcessingRef.current = false;
+            }
+          },
+          (error) => {
+            // Ignore continuous scan errors (like QR code not found)
           }
-        } catch (error) {
-          alert("Terjadi kesalahan jaringan.");
-          scanner.resume();
-        }
-      },
-      (error) => {
-        // Ignore errors during continuous scanning
+        );
+        isScannerStarted = true;
+      } catch (err) {
+        console.error("Error starting scanner:", err);
       }
-    );
+    }, 100);
 
     return () => {
-      scanner.clear().catch(error => console.error("Failed to clear scanner", error));
+      isMounted = false;
+      clearTimeout(initTimer);
+      if (scanner && isScannerStarted) {
+        scanner.stop().catch(console.error);
+      }
     };
   }, []);
 
   const handleReset = () => {
     setScanResult(null);
     setStatus("idle");
-    window.location.reload(); // Quick way to reinitialize scanner
+    window.location.reload(); // Quick way to reinitialize scanner safely
   };
 
   return (
