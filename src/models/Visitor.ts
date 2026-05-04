@@ -3,12 +3,14 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IVisitor extends Document {
   name: string;
   agency: string;
+  agency_address?: string;
   phone: string; // Unique identifier for visitor
 }
 
 const VisitorSchema: Schema = new Schema({
   name: { type: String, required: true },
   agency: { type: String, required: true },
+  agency_address: { type: String, default: '' },
   phone: { type: String, required: true, unique: true },
 }, { timestamps: true });
 

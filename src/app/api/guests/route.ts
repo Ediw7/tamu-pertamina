@@ -17,6 +17,7 @@ export async function GET() {
       ...visit,
       name: visit.visitorId?.name || 'Unknown',
       agency: visit.visitorId?.agency || 'Unknown',
+      agency_address: visit.visitorId?.agency_address || '',
       phone: visit.visitorId?.phone || 'Unknown',
     }));
 
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
   try {
     await connectDB();
     const body = await request.json();
-    const { name, agency, phone, host, purpose } = body;
+    const { name, agency, agency_address, phone, host, purpose, ktp_image } = body;
     
     if (!name || !phone) {
       return NextResponse.json({ error: 'Nama dan Nomor Telepon wajib diisi' }, { status: 400 });
@@ -44,12 +45,14 @@ export async function POST(request: Request) {
       visitor = await Visitor.create({
         name: name.toUpperCase(),
         agency: agency || '-',
+        agency_address: agency_address || '',
         phone
       });
     } else {
-      // Optional: Update name/agency if they changed
+      // Update name/agency/address if they changed
       visitor.name = name.toUpperCase();
       visitor.agency = agency || visitor.agency;
+      visitor.agency_address = agency_address || visitor.agency_address;
       await visitor.save();
     }
 
@@ -61,6 +64,7 @@ export async function POST(request: Request) {
       visitorId: visitor._id,
       host: host || '-',
       purpose: purpose || '-',
+      ktp_image: ktp_image || '',
       status: 'CHECKED_IN',
       qr_code
     });

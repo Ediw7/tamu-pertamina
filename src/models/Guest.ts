@@ -1,10 +1,12 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import './Visitor';
+import { Jacques_Francois } from 'next/font/google';
 
 export interface IGuest extends Document {
   visitorId: mongoose.Types.ObjectId;
   purpose: string;
   host: string;
+  ktp_image?: string;
   status: 'CHECKED_IN' | 'CHECKED_OUT';
   check_in_time: Date;
   check_out_time?: Date;
@@ -13,14 +15,15 @@ export interface IGuest extends Document {
 
 const GuestSchema: Schema = new Schema({
   visitorId: { type: Schema.Types.ObjectId, ref: 'Visitor', required: true },
-  purpose: { 
-    type: String, 
+  purpose: {
+    type: String,
     required: true
   },
   host: { type: String, required: true },
-  status: { 
-    type: String, 
-    enum: ['CHECKED_IN', 'CHECKED_OUT'], 
+  ktp_image: { type: String, default: '' },
+  status: {
+    type: String,
+    enum: ['CHECKED_IN', 'CHECKED_OUT'],
     default: 'CHECKED_IN',
     required: true
   },

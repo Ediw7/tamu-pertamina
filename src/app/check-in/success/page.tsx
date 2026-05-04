@@ -1,8 +1,7 @@
 "use client";
 
-import { useRef } from "react";
 import Link from "next/link";
-import { CheckCircle2, Download, Home } from "lucide-react";
+import { CheckCircle2, Home } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";

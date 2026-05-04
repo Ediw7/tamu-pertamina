@@ -68,7 +68,7 @@ export default function LiveDashboard() {
           setGuests(data);
 
           const now = new Date().getTime();
-          const active = data.filter((g: any) => g.status === 'checked_in');
+          const active = data.filter((g: any) => g.status === 'CHECKED_IN');
           setActiveCount(active.length);
 
           const overstay = active.filter((g: any) => (now - new Date(g.check_in_time).getTime()) > (4 * 60 * 60 * 1000));
@@ -77,7 +77,7 @@ export default function LiveDashboard() {
           const today = new Date().toDateString();
           const todayGuests = data.filter((g: any) => new Date(g.check_in_time).toDateString() === today);
           setTodayCount(todayGuests.length);
-          setCompletedCount(todayGuests.filter((g: any) => g.status === 'checked_out').length);
+          setCompletedCount(todayGuests.filter((g: any) => g.status === 'CHECKED_OUT').length);
         }
       } catch (error) {
         console.error('Failed to fetch guests', error);
@@ -95,10 +95,11 @@ export default function LiveDashboard() {
   }, [searchQuery, statusFilter, filterType, filterDate, filterWeek, filterMonth, filterYear]);
 
   const handleExportCSV = () => {
-    const headers = ["Nama", "Instansi", "PIC", "Keperluan", "Masuk", "Keluar", "Status"];
+    const headers = ["Nama", "Instansi", "Alamat Instansi", "PIC", "Keperluan", "Masuk", "Keluar", "Status"];
     const rows = filteredGuests.map(g => [
       g.name,
       g.agency,
+      g.agency_address || "-",
       g.host || "-",
       g.purpose,
       new Date(g.check_in_time).toLocaleString(),
@@ -196,7 +197,7 @@ export default function LiveDashboard() {
   });
 
   // 3. Average Duration (for checked_out guests)
-  const completedGuests = filteredGuests.filter(g => g.status === 'checked_out' && g.check_out_time);
+  const completedGuests = filteredGuests.filter(g => g.status === 'CHECKED_OUT' && g.check_out_time);
   const totalDuration = completedGuests.reduce((acc, g) => {
     const duration = new Date(g.check_out_time!).getTime() - new Date(g.check_in_time).getTime();
     return acc + duration;
@@ -367,8 +368,8 @@ export default function LiveDashboard() {
               className="px-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500/10 focus:border-red-500 transition-all cursor-pointer font-medium"
             >
               <option value="all">Semua Status</option>
-              <option value="checked_in">Di Area</option>
-              <option value="checked_out">Selesai</option>
+              <option value="CHECKED_IN">Di Area</option>
+              <option value="CHECKED_OUT">Selesai</option>
             </select>
 
             {/* Items Per Page */}
@@ -422,7 +423,7 @@ export default function LiveDashboard() {
                   paginatedGuests.map((guest: any) => {
                     const checkInTime = new Date(guest.check_in_time).getTime();
                     const now = new Date().getTime();
-                    const isOverstay = guest.status === 'checked_in' && (now - checkInTime) > (4 * 60 * 60 * 1000);
+                    const isOverstay = guest.status === 'CHECKED_IN' && (now - checkInTime) > (4 * 60 * 60 * 1000);
 
                     return (
                       <tr key={guest._id || guest.id} className={`hover:bg-gray-50/50 transition-colors ${isOverstay ? 'bg-red-50/50' : ''}`}>
@@ -432,12 +433,12 @@ export default function LiveDashboard() {
                         <td className="px-6 py-4">{guest.purpose}</td>
                         <td className="px-6 py-4 font-medium">{new Date(guest.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</td>
                         <td className="px-6 py-4 font-mono text-gray-600">
-                          {guest.status === 'checked_out' && guest.check_out_time
+                          {guest.status === 'CHECKED_OUT' && guest.check_out_time
                             ? new Date(guest.check_out_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
                             : '-'}
                         </td>
                         <td className="px-6 py-4">
-                          {guest.status === 'checked_in' ? (
+                          {guest.status === 'CHECKED_IN' ? (
                             <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full border ${isOverstay ? 'text-red-700 bg-red-50 border-red-100' : 'text-blue-700 bg-blue-50 border-blue-100'}`}>
                               <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${isOverstay ? 'bg-red-600 animate-pulse' : 'bg-blue-600'}`}></span>
                               {isOverstay ? 'Overstay' : 'Di Area'}
@@ -449,7 +450,7 @@ export default function LiveDashboard() {
                           )}
                         </td>
                         <td className="px-6 py-4 text-right">
-                          {guest.status === 'checked_in' && (
+                          {guest.status === 'CHECKED_IN' && (
                             <button
                               onClick={() => handleForceCheckout(guest.qr_code)}
                               className="p-2 text-gray-400 hover:text-red-600 transition-colors"
