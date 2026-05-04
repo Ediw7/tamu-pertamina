@@ -6,8 +6,10 @@ import { CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function QRScanner() {
   const [lastGuest, setLastGuest] = useState<string | null>(null);
-  const [notification, setNotification] = useState<{ type: "success" | "error", message: string } | null>(null);
+  const [notification, setNotification] = useState<{ type: "success" | "error" | "warning", message: string } | null>(null);
   const isProcessingRef = useRef(false);
+  const lastScannedTextRef = useRef<string | null>(null);
+  const lastScanTimeRef = useRef<number>(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -26,7 +28,16 @@ export default function QRScanner() {
           async (decodedText) => {
             // Prevent processing if already processing or unmounted
             if (!isMounted || isProcessingRef.current) return;
+
+            // Prevent duplicate scans of the same QR within 5 seconds
+            const nowTime = Date.now();
+            if (decodedText === lastScannedTextRef.current && (nowTime - lastScanTimeRef.current) < 5000) {
+              return;
+            }
+
             isProcessingRef.current = true;
+            lastScannedTextRef.current = decodedText;
+            lastScanTimeRef.current = nowTime;
 
             try {
               const response = await fetch('/api/guests/checkout', {
@@ -35,19 +46,23 @@ export default function QRScanner() {
                 body: JSON.stringify({ qr_code: decodedText })
               });
 
+              const data = await response.json();
+
               if (response.ok) {
-                const data = await response.json();
                 setLastGuest(decodedText);
                 setNotification({ type: "success", message: `Berhasil Check-Out: ${data.guest?.name || decodedText}` });
                 
-                // Clear notification and allow next scan after 3 seconds
                 setTimeout(() => {
                   setNotification(null);
                   isProcessingRef.current = false;
                 }, 3000);
               } else {
-                const data = await response.json();
-                setNotification({ type: "error", message: data.error || "QR tidak valid" });
+                // Handle already checked out as a warning, not a scary error
+                if (data.alreadyCheckedOut) {
+                  setNotification({ type: "warning", message: "Tamu ini sudah tercatat keluar sebelumnya." });
+                } else {
+                  setNotification({ type: "error", message: data.error || "QR tidak valid" });
+                }
                 
                 setTimeout(() => {
                   setNotification(null);
@@ -103,10 +118,12 @@ export default function QRScanner() {
           {/* Notification Overlay */}
           {notification && (
             <div className={`absolute top-0 left-0 right-0 z-10 p-4 text-center animate-in slide-in-from-top duration-300 ${
-              notification.type === "success" ? "bg-green-600" : "bg-red-600"
+              notification.type === "success" ? "bg-green-600" : 
+              notification.type === "warning" ? "bg-amber-500" : "bg-red-600"
             }`}>
               <div className="flex items-center justify-center gap-2 text-white">
-                {notification.type === "success" ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                {notification.type === "success" ? <CheckCircle2 className="w-5 h-5" /> : 
+                 notification.type === "warning" ? <AlertCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
                 <p className="text-sm font-bold">{notification.message}</p>
               </div>
             </div>

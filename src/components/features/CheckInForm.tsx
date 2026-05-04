@@ -4,13 +4,14 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { 
   User, Briefcase, Phone, FileText, ArrowRight, ShieldCheck, 
-  ArrowLeft, MapPin, Camera, X, ImageIcon 
+  ArrowLeft, MapPin, Camera, X, ImageIcon, AlertTriangle
 } from "lucide-react";
 
 export default function CheckInForm() {
   const router = useRouter();
   const [step, setStep] = useState(1); // 1: Form, 2: Confirmation
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorModal, setErrorModal] = useState<{show: boolean, message: string}>({show: false, message: ""});
   const [isOtherPurpose, setIsOtherPurpose] = useState(false);
   const [agreedToSafety, setAgreedToSafety] = useState(false);
   const [ktpPreview, setKtpPreview] = useState<string | null>(null);
@@ -86,12 +87,12 @@ export default function CheckInForm() {
         localStorage.setItem("lastGuestId", data.guest.qr_code);
         router.push(`/check-in/success?id=${data.guest.qr_code}`);
       } else {
-        alert("Terjadi kesalahan: " + data.error);
+        setErrorModal({ show: true, message: data.error || "Gagal melakukan Check-In." });
         setIsSubmitting(false);
       }
     } catch (error) {
       console.error("Error checking in:", error);
-      alert("Terjadi kesalahan sistem.");
+      setErrorModal({ show: true, message: "Terjadi kesalahan sistem saat menghubungi server." });
       setIsSubmitting(false);
     }
   };
@@ -424,6 +425,31 @@ export default function CheckInForm() {
           <ArrowRight className="w-4 h-4" />
         </button>
       </form>
+
+      {/* Error Modal */}
+      {errorModal.show && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="p-8 text-center bg-red-50">
+              <div className="w-16 h-16 mx-auto mb-4 bg-red-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-red-600/20">
+                <AlertTriangle className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-black text-gray-900 mb-2">Terjadi Kesalahan</h3>
+              <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                {errorModal.message}
+              </p>
+            </div>
+            <div className="p-6 bg-white">
+              <button 
+                onClick={() => setErrorModal({ show: false, message: "" })}
+                className="w-full px-6 py-4 text-sm font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-red-600/20 transition-all active:scale-95"
+              >
+                Tutup & Coba Lagi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

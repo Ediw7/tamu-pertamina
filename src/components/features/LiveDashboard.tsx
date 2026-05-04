@@ -46,6 +46,19 @@ export default function LiveDashboard() {
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean,
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    isDanger: boolean
+  }>({
+    show: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    isDanger: false
+  });
 
   // States for search and filtering
   const [searchQuery, setSearchQuery] = useState("");
@@ -131,26 +144,34 @@ export default function LiveDashboard() {
     document.body.removeChild(link);
   };
 
-  const handleForceCheckout = async (qrCode: string) => {
-    if (!confirm("Apakah Anda yakin ingin melakukan Force Check-Out pada tamu ini?")) return;
+  const handleForceCheckout = (qrCode: string) => {
+    setConfirmModal({
+      show: true,
+      title: "Konfirmasi Force Check-Out",
+      message: "Apakah Anda yakin ingin mengeluarkan tamu ini secara paksa? Tindakan ini akan mencatat tamu telah keluar dari area.",
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const response = await fetch('/api/guests/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ qr_code: qrCode })
+          });
 
-    try {
-      const response = await fetch('/api/guests/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ qr_code: qrCode })
-      });
-
-      if (response.ok) {
-        const res = await fetch('/api/guests');
-        const data = await res.json();
-        setGuests(data);
-      } else {
-        alert("Gagal melakukan Force Check-Out");
+          if (response.ok) {
+            fetchGuests();
+            setConfirmModal(prev => ({ ...prev, show: false }));
+          } else {
+            const data = await response.json();
+            setFetchError(data.error || "Gagal melakukan Force Check-Out");
+            setConfirmModal(prev => ({ ...prev, show: false }));
+          }
+        } catch (error) {
+          setFetchError("Kesalahan sistem saat menghubungi server.");
+          setConfirmModal(prev => ({ ...prev, show: false }));
+        }
       }
-    } catch (error) {
-      alert("Terjadi kesalahan sistem");
-    }
+    });
   };
 
   const getISOWeek = (date: Date) => {
@@ -234,17 +255,6 @@ export default function LiveDashboard() {
           <p className="mt-1 text-sm text-gray-500 font-medium">Monitoring Real-Time & Business Intelligence.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              setIsLoading(true);
-              fetchGuests();
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
-            disabled={isLoading}
-          >
-            <Activity className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
           <button
             onClick={() => setShowAnalytics(!showAnalytics)}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all border ${showAnalytics
@@ -809,6 +819,41 @@ export default function LiveDashboard() {
                   Force Check-Out
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModal.show && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className={`p-8 text-center ${confirmModal.isDanger ? 'bg-red-50' : 'bg-blue-50'}`}>
+              <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center shadow-lg ${
+                confirmModal.isDanger ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'
+              }`}>
+                {confirmModal.isDanger ? <ShieldAlert className="w-8 h-8" /> : <Activity className="w-8 h-8" />}
+              </div>
+              <h3 className="text-xl font-black text-gray-900 mb-2">{confirmModal.title}</h3>
+              <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                {confirmModal.message}
+              </p>
+            </div>
+            <div className="p-6 bg-white flex gap-3">
+              <button 
+                onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
+                className="flex-1 px-6 py-3 text-xs font-bold text-gray-500 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={confirmModal.onConfirm}
+                className={`flex-1 px-6 py-3 text-xs font-bold text-white rounded-xl shadow-lg transition-all active:scale-95 ${
+                  confirmModal.isDanger ? 'bg-red-600 hover:bg-red-700 shadow-red-600/20' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
+                }`}
+              >
+                Ya, Lanjutkan
+              </button>
             </div>
           </div>
         </div>

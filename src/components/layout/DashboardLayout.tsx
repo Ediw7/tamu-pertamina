@@ -3,22 +3,25 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, LogOut, Home, QrCode, Lock, ArrowRight, ArrowLeft } from "lucide-react";
+import { Users, LogOut, Home, QrCode, Lock, ArrowRight, ArrowLeft, AlertTriangle } from "lucide-react";
 import Image from "next/image";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorModal, setErrorModal] = useState<{show: boolean, message: string}>({show: false, message: ""});
 
   useEffect(() => {
     const auth = sessionStorage.getItem("adminAuth");
     if (auth === "true") {
       setIsAuthenticated(true);
     }
+    setCheckingAuth(false);
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -42,13 +45,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setIsAuthenticated(true);
       } else {
         // Tampilkan pesan error spesifik dari server
-        alert("Login Gagal: " + (data.message || "Username atau Password salah"));
+        setErrorModal({ show: true, message: data.message || "Username atau Password salah" });
         setError(true);
         setPassword("");
       }
     } catch (err: any) {
       console.error(err);
-      alert("Kesalahan Sistem: " + err.message);
+      setErrorModal({ show: true, message: "Kesalahan Sistem: " + err.message });
       setError(true);
     } finally {
       setIsLoading(false);
@@ -64,6 +67,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: "Live Dashboard", href: "/dashboard", icon: Users },
     { name: "Scan QR Keluar", href: "/dashboard/scan", icon: QrCode },
   ];
+
+  if (checkingAuth) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em]">Memverifikasi Akses...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -278,6 +292,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+
+      {/* Error Modal */}
+      {errorModal.show && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="p-8 text-center bg-red-50">
+              <div className="w-16 h-16 mx-auto mb-4 bg-red-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-red-600/20">
+                <AlertTriangle className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-black text-gray-900 mb-2">Login Bermasalah</h3>
+              <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                {errorModal.message}
+              </p>
+            </div>
+            <div className="p-6 bg-white">
+              <button 
+                onClick={() => setErrorModal({ show: false, message: "" })}
+                className="w-full px-6 py-4 text-sm font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-red-600/20 transition-all active:scale-95"
+              >
+                Coba Lagi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
