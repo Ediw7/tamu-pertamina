@@ -3,6 +3,8 @@ import connectDB from '@/lib/mongodb';
 import Guest from '@/models/Guest';
 import Visitor from '@/models/Visitor';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     await connectDB();

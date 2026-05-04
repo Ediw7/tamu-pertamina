@@ -44,6 +44,8 @@ export default function LiveDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // States for search and filtering
   const [searchQuery, setSearchQuery] = useState("");
@@ -61,40 +63,48 @@ export default function LiveDashboard() {
     return `${d.getUTCFullYear()}-W${weekNo.toString().padStart(2, '0')}`;
   });
 
-  useEffect(() => {
-    const fetchGuests = async () => {
-      try {
-        const response = await fetch('/api/guests');
-        const data = await response.json();
-        if (response.ok) {
-          setGuests(data);
+  const fetchGuests = async () => {
+    try {
+      setFetchError(null);
+      const response = await fetch('/api/guests', { cache: 'no-store' });
+      const data = await response.json();
+      
+      if (response.ok && Array.isArray(data)) {
+        setGuests(data);
 
-          const now = new Date().getTime();
-          const active = data.filter((g: any) => g.status === 'CHECKED_IN');
-          setActiveCount(active.length);
+        const now = new Date().getTime();
+        const active = data.filter((g: any) => g.status === 'CHECKED_IN');
+        setActiveCount(active.length);
 
-          const overstay = active.filter((g: any) => (now - new Date(g.check_in_time).getTime()) > (4 * 60 * 60 * 1000));
-          setOverstayCount(overstay.length);
+        const overstay = active.filter((g: any) => (now - new Date(g.check_in_time).getTime()) > (4 * 60 * 60 * 1000));
+        setOverstayCount(overstay.length);
 
-          const today = new Date().toDateString();
-          const todayGuests = data.filter((g: any) => new Date(g.check_in_time).toDateString() === today);
-          setTodayCount(todayGuests.length);
-          setCompletedCount(todayGuests.filter((g: any) => g.status === 'CHECKED_OUT').length);
-        }
-      } catch (error) {
-        console.error('Failed to fetch guests', error);
+        const today = new Date().toDateString();
+        const todayGuests = data.filter((g: any) => new Date(g.check_in_time).toDateString() === today);
+        setTodayCount(todayGuests.length);
+        setCompletedCount(todayGuests.filter((g: any) => g.status === 'CHECKED_OUT').length);
+      } else {
+        setFetchError(data.error || "Gagal mengambil data dari server");
       }
-    };
-
-    fetchGuests();
-    const interval = setInterval(fetchGuests, 10000);
-    return () => clearInterval(interval);
-  }, []);
+    } catch (error) {
+      console.error('Failed to fetch guests', error);
+      setFetchError("Kesalahan jaringan atau server.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, statusFilter, filterType, filterDate, filterWeek, filterMonth, filterYear]);
+
+  // Initial fetch and polling
+  useEffect(() => {
+    fetchGuests();
+    const interval = setInterval(fetchGuests, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleExportCSV = () => {
     const headers = ["Nama", "Instansi", "Alamat Instansi", "PIC", "Keperluan", "Masuk", "Keluar", "Status"];
@@ -225,6 +235,17 @@ export default function LiveDashboard() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => {
+              setIsLoading(true);
+              fetchGuests();
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
+            disabled={isLoading}
+          >
+            <Activity className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+          <button
             onClick={() => setShowAnalytics(!showAnalytics)}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all border ${showAnalytics
               ? "bg-red-50 text-red-600 border-red-200"
@@ -243,6 +264,22 @@ export default function LiveDashboard() {
           </button>
         </div>
       </div>
+
+      {fetchError && (
+        <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 animate-in fade-in duration-300">
+          <ShieldAlert className="w-5 h-5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-bold">Gagal sinkronisasi data</p>
+            <p className="text-xs opacity-80">{fetchError}</p>
+          </div>
+          <button 
+            onClick={fetchGuests}
+            className="px-3 py-1 bg-red-600 text-white text-[10px] font-bold rounded-lg hover:bg-red-700 transition-all"
+          >
+            Coba Lagi
+          </button>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -418,7 +455,14 @@ export default function LiveDashboard() {
                 {filteredGuests.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                      Tidak ada data yang ditemukan untuk filter ini.
+                      {isLoading ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <Activity className="w-6 h-6 text-red-600 animate-spin" />
+                          <p className="text-xs font-bold uppercase tracking-widest">Memuat data tamu...</p>
+                        </div>
+                      ) : (
+                        "Tidak ada data yang ditemukan untuk filter ini."
+                      )}
                     </td>
                   </tr>
                 ) : (

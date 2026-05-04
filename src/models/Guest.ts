@@ -31,9 +31,5 @@ const GuestSchema: Schema = new Schema({
   qr_code: { type: String, required: true, unique: true },
 }, { timestamps: true });
 
-// FORCE REFRESH: Delete the model if it exists to apply new schema changes
-if (mongoose.models.Guest) {
-  delete mongoose.models.Guest;
-}
-
-export default mongoose.model<IGuest>('Guest', GuestSchema);
+const Guest = mongoose.models.Guest || mongoose.model<IGuest>('Guest', GuestSchema);
+export default Guest;

@@ -9,10 +9,29 @@ export default function Home() {
   const [lastGuestId, setLastGuestId] = useState<string | null>(null);
 
   useEffect(() => {
-    const savedId = localStorage.getItem("lastGuestId");
-    if (savedId) {
-      setLastGuestId(savedId);
-    }
+    const checkLastGuestStatus = async () => {
+      const savedId = localStorage.getItem("lastGuestId");
+      if (!savedId) return;
+
+      try {
+        const response = await fetch(`/api/guests/status?qr_code=${savedId}`);
+        const data = await response.json();
+
+        if (data.status === 'CHECKED_IN') {
+          setLastGuestId(savedId);
+        } else {
+          // If status is CHECKED_OUT or NOT_FOUND, remove it
+          localStorage.removeItem("lastGuestId");
+          setLastGuestId(null);
+        }
+      } catch (error) {
+        console.error("Error checking guest status:", error);
+        // On error, keep it just in case, but usually we'd set it
+        setLastGuestId(savedId);
+      }
+    };
+
+    checkLastGuestStatus();
   }, []);
 
   return (

@@ -5,8 +5,8 @@ import { Html5Qrcode } from "html5-qrcode";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function QRScanner() {
-  const [scanResult, setScanResult] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [lastGuest, setLastGuest] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{ type: "success" | "error", message: string } | null>(null);
   const isProcessingRef = useRef(false);
 
   useEffect(() => {
@@ -36,24 +36,34 @@ export default function QRScanner() {
               });
 
               if (response.ok) {
-                setScanResult(decodedText);
-                setStatus("success");
-                // Stop scanner on success
-                if (scanner && isScannerStarted) {
-                  scanner.stop().catch(console.error);
-                }
+                const data = await response.json();
+                setLastGuest(decodedText);
+                setNotification({ type: "success", message: `Berhasil Check-Out: ${data.guest?.name || decodedText}` });
+                
+                // Clear notification and allow next scan after 3 seconds
+                setTimeout(() => {
+                  setNotification(null);
+                  isProcessingRef.current = false;
+                }, 3000);
               } else {
                 const data = await response.json();
-                alert("Gagal Check-Out: " + (data.error || "QR tidak valid"));
-                isProcessingRef.current = false; // allow scanning again
+                setNotification({ type: "error", message: data.error || "QR tidak valid" });
+                
+                setTimeout(() => {
+                  setNotification(null);
+                  isProcessingRef.current = false;
+                }, 3000);
               }
             } catch (error) {
-              alert("Terjadi kesalahan jaringan.");
-              isProcessingRef.current = false;
+              setNotification({ type: "error", message: "Terjadi kesalahan jaringan." });
+              setTimeout(() => {
+                setNotification(null);
+                isProcessingRef.current = false;
+              }, 3000);
             }
           },
           (error) => {
-            // Ignore continuous scan errors (like QR code not found)
+            // Ignore continuous scan errors
           }
         );
         isScannerStarted = true;
@@ -71,11 +81,6 @@ export default function QRScanner() {
     };
   }, []);
 
-  const handleReset = () => {
-    setScanResult(null);
-    setStatus("idle");
-    window.location.reload(); // Quick way to reinitialize scanner safely
-  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-2xl mx-auto">
@@ -87,41 +92,43 @@ export default function QRScanner() {
       </div>
 
       <div className="p-8 bg-white border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-3xl relative overflow-hidden">
-        <div className={status === "idle" ? "flex flex-col items-center" : "hidden"}>
+        {/* Camera UI - Always Visible */}
+        <div className="flex flex-col items-center">
           <style jsx global>{`
             #reader video {
               transform: scaleX(-1);
             }
           `}</style>
+          
+          {/* Notification Overlay */}
+          {notification && (
+            <div className={`absolute top-0 left-0 right-0 z-10 p-4 text-center animate-in slide-in-from-top duration-300 ${
+              notification.type === "success" ? "bg-green-600" : "bg-red-600"
+            }`}>
+              <div className="flex items-center justify-center gap-2 text-white">
+                {notification.type === "success" ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                <p className="text-sm font-bold">{notification.message}</p>
+              </div>
+            </div>
+          )}
+
           <div id="reader" className="w-full max-w-sm overflow-hidden bg-black rounded-2xl shadow-inner aspect-square"></div>
           
-          <p className="mt-8 text-sm text-gray-500 flex items-center gap-2">
-            <span className="relative flex w-2.5 h-2.5">
-              <span className="absolute inline-flex w-full h-full bg-red-400 rounded-full opacity-75 animate-ping"></span>
-              <span className="relative inline-flex w-2.5 h-2.5 bg-red-500 rounded-full"></span>
-            </span>
-            Kamera aktif & siap memindai
-          </p>
-        </div>
-
-        {status === "success" && (
-          <div className="flex flex-col items-center justify-center py-12 text-center animate-in zoom-in-95 duration-300">
-            <div className="flex items-center justify-center w-20 h-20 mb-6 bg-green-50 rounded-full shadow-inner">
-              <CheckCircle2 className="w-10 h-10 text-green-500" />
-            </div>
-            <h3 className="mb-2 text-2xl font-bold text-gray-900">Check-Out Berhasil!</h3>
-            <div className="px-6 py-3 mb-8 bg-gray-50 rounded-xl border border-gray-100">
-              <p className="text-sm text-gray-500 mb-1">ID Pengunjung</p>
-              <p className="font-mono text-lg font-bold text-gray-900">{scanResult}</p>
-            </div>
-            <button
-              onClick={handleReset}
-              className="px-8 py-3.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-md shadow-red-500/20 active:scale-[0.98]"
-            >
-              Scan Pengunjung Lain
-            </button>
+          <div className="mt-8 flex flex-col items-center gap-2">
+            <p className="text-sm text-gray-500 flex items-center gap-2 font-medium">
+              <span className="relative flex w-2.5 h-2.5">
+                <span className="absolute inline-flex w-full h-full bg-red-400 rounded-full opacity-75 animate-ping"></span>
+                <span className="relative inline-flex w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+              </span>
+              Kamera aktif & siap memindai
+            </p>
+            {lastGuest && !notification && (
+              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">
+                Terakhir Scan: {lastGuest}
+              </p>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
