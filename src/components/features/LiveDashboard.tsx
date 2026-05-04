@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import {
   Users, UserCheck, Clock, ShieldAlert, CheckCircle2, Download,
-  Trash2, Search, Filter, Calendar, ChevronRight, BarChart3, PieChart, Activity
+  Trash2, Search, Filter, Calendar, ChevronRight, BarChart3, PieChart, Activity,
+  X, ExternalLink, MapPin, Phone, User, Briefcase, FileImage, Shield
 } from "lucide-react";
 import { Guest } from "@/types/guest";
 import {
@@ -42,6 +43,7 @@ export default function LiveDashboard() {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
 
   // States for search and filtering
   const [searchQuery, setSearchQuery] = useState("");
@@ -426,8 +428,12 @@ export default function LiveDashboard() {
                     const isOverstay = guest.status === 'CHECKED_IN' && (now - checkInTime) > (4 * 60 * 60 * 1000);
 
                     return (
-                      <tr key={guest._id || guest.id} className={`hover:bg-gray-50/50 transition-colors ${isOverstay ? 'bg-red-50/50' : ''}`}>
-                        <td className="px-6 py-4 font-medium text-gray-900">{guest.name}</td>
+                      <tr 
+                        key={guest._id || guest.id} 
+                        onClick={() => setSelectedGuest(guest)}
+                        className={`hover:bg-gray-50/50 transition-colors cursor-pointer group ${isOverstay ? 'bg-red-50/50' : ''}`}
+                      >
+                        <td className="px-6 py-4 font-medium text-gray-900 group-hover:text-red-600 transition-colors">{guest.name}</td>
                         <td className="px-6 py-4">{guest.agency}</td>
                         <td className="px-6 py-4 font-medium text-gray-700">{guest.host || "-"}</td>
                         <td className="px-6 py-4">{guest.purpose}</td>
@@ -450,15 +456,17 @@ export default function LiveDashboard() {
                           )}
                         </td>
                         <td className="px-6 py-4 text-right">
-                          {guest.status === 'CHECKED_IN' && (
-                            <button
-                              onClick={() => handleForceCheckout(guest.qr_code)}
-                              className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-                              title="Force Check-Out"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
+                          <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                            {guest.status === 'CHECKED_IN' && (
+                              <button
+                                onClick={() => handleForceCheckout(guest.qr_code)}
+                                className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                                title="Force Check-Out"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -582,6 +590,182 @@ export default function LiveDashboard() {
               Mayoritas tamu datang dengan keperluan <strong>{Object.entries(purposeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '-'}</strong>.
               Data ini dapat digunakan manajemen Pertamina untuk mengoptimalkan jumlah petugas keamanan pada jam-jam sibuk tersebut.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Guest Detail Modal */}
+      {selectedGuest && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div 
+            className="bg-white w-full max-w-2xl rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="relative h-20 bg-red-600 overflow-hidden flex items-center px-8">
+              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/40 via-transparent to-transparent"></div>
+              <div className="relative text-white">
+                <h3 className="text-xl font-black tracking-tight uppercase">Detail Pengunjung</h3>
+                <p className="text-red-100 text-[10px] font-medium opacity-80">Informasi lengkap kedatangan tamu.</p>
+              </div>
+              <button 
+                onClick={() => setSelectedGuest(null)}
+                className="absolute right-6 top-1/2 -translate-y-1/2 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Left Column: Info */}
+                <div className="space-y-6">
+                  <div>
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 block">Data Diri</span>
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-gray-50 rounded-lg text-gray-400">
+                          <User className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase">Nama Lengkap</p>
+                          <p className="text-sm font-bold text-gray-900">{selectedGuest.name}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-gray-50 rounded-lg text-gray-400">
+                          <Phone className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase">Nomor Telepon</p>
+                          <p className="text-sm font-bold text-gray-900">{selectedGuest.phone}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 block">Instansi & Keperluan</span>
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-gray-50 rounded-lg text-gray-400">
+                          <Briefcase className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase">Asal Instansi</p>
+                          <p className="text-sm font-bold text-gray-900">{selectedGuest.agency}</p>
+                        </div>
+                      </div>
+                      {selectedGuest.agency_address && (
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-gray-50 rounded-lg text-gray-400">
+                            <MapPin className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase">Alamat Instansi</p>
+                            <p className="text-sm font-medium text-gray-600 leading-relaxed">{selectedGuest.agency_address}</p>
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-gray-50 rounded-lg text-gray-400">
+                          <Activity className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase">Tujuan / PIC</p>
+                          <p className="text-sm font-bold text-gray-900">{selectedGuest.host} - <span className="text-red-600">{selectedGuest.purpose}</span></p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Time & Photo */}
+                <div className="space-y-6">
+                  <div>
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 block">Status Kunjungan</span>
+                    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                      <div className="flex items-center justify-between mb-4">
+                         <div className="flex items-center gap-2">
+                           <Clock className="w-4 h-4 text-gray-400" />
+                           <span className="text-[10px] font-bold text-gray-400 uppercase">Log Waktu</span>
+                         </div>
+                         <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${
+                           selectedGuest.status === 'CHECKED_IN' 
+                           ? 'bg-blue-50 text-blue-600 border-blue-100' 
+                           : 'bg-green-50 text-green-600 border-green-100'
+                         }`}>
+                           {selectedGuest.status === 'CHECKED_IN' ? 'DI AREA' : 'SELESAI'}
+                         </span>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase">Check-In</span>
+                          <span className="text-xs font-bold text-gray-900">{new Date(selectedGuest.check_in_time).toLocaleString('id-ID')}</span>
+                        </div>
+                        {selectedGuest.check_out_time && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase">Check-Out</span>
+                            <span className="text-xs font-bold text-gray-900">{new Date(selectedGuest.check_out_time).toLocaleString('id-ID')}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedGuest.ktp_image ? (
+                    <div>
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 block">Lampiran Identitas</span>
+                      <div className="relative group rounded-2xl overflow-hidden border border-gray-100 bg-gray-50">
+                        <img 
+                          src={selectedGuest.ktp_image} 
+                          alt="KTP Pengunjung" 
+                          className="w-full aspect-[3/2] object-cover transition-transform group-hover:scale-105 duration-500"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <button 
+                            onClick={() => window.open(selectedGuest.ktp_image, '_blank')}
+                            className="p-3 bg-white text-gray-900 rounded-full shadow-xl hover:scale-110 transition-transform"
+                          >
+                            <ExternalLink className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center p-8 bg-gray-50 border border-dashed border-gray-200 rounded-2xl">
+                      <FileImage className="w-8 h-8 text-gray-300 mb-2" />
+                      <p className="text-[10px] font-bold text-gray-400 uppercase text-center tracking-wider leading-relaxed">
+                        Tidak ada lampiran<br />foto identitas
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+              <button 
+                onClick={() => setSelectedGuest(null)}
+                className="px-6 py-2.5 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
+              >
+                Tutup
+              </button>
+              {selectedGuest.status === 'CHECKED_IN' && (
+                <button 
+                  onClick={() => {
+                    handleForceCheckout(selectedGuest.qr_code);
+                    setSelectedGuest(null);
+                  }}
+                  className="px-6 py-2.5 text-xs font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-red-600/20 transition-all flex items-center gap-2"
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                  Force Check-Out
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

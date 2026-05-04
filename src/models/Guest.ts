@@ -1,6 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import './Visitor';
-import { Jacques_Francois } from 'next/font/google';
 
 export interface IGuest extends Document {
   visitorId: mongoose.Types.ObjectId;
