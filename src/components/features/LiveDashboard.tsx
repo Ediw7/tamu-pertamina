@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Users, UserCheck, Clock, ShieldAlert, CheckCircle2, Download,
   Trash2, Search, Filter, Calendar, ChevronRight, BarChart3, PieChart, Activity,
-  X, ExternalLink, MapPin, Phone, User, Briefcase, FileImage, Shield
+  X, ExternalLink, MapPin, Phone, User, Briefcase, FileImage, Shield, CalendarDays
 } from "lucide-react";
 import { Guest } from "@/types/guest";
 import {
@@ -207,12 +207,42 @@ export default function LiveDashboard() {
     return matchesSearch && matchesStatus && matchesTime;
   });
 
-  // Pagination logic
+  // --- Group guests by date ---
+  const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+  const formatDateLabel = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const dayName = dayNames[d.getDay()];
+    const day = d.getDate();
+    const month = monthNames[d.getMonth()];
+    const year = d.getFullYear();
+    return `${dayName}, ${day} ${month} ${year}`;
+  };
+
+  const groupedByDate: Record<string, typeof filteredGuests> = {};
+  filteredGuests.forEach(guest => {
+    const dateKey = new Date(guest.check_in_time).toLocaleDateString('sv-SE'); // YYYY-MM-DD
+    if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
+    groupedByDate[dateKey].push(guest);
+  });
+  const sortedDateKeys = Object.keys(groupedByDate).sort((a, b) => b.localeCompare(a)); // newest first
+
+  // Pagination logic (still applies to flat list for table view)
   const totalPages = Math.ceil(filteredGuests.length / itemsPerPage);
   const paginatedGuests = filteredGuests.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+
+  // Group paginated guests by date for card view
+  const paginatedGrouped: Record<string, typeof filteredGuests> = {};
+  paginatedGuests.forEach(guest => {
+    const dateKey = new Date(guest.check_in_time).toLocaleDateString('sv-SE');
+    if (!paginatedGrouped[dateKey]) paginatedGrouped[dateKey] = [];
+    paginatedGrouped[dateKey].push(guest);
+  });
+  const paginatedDateKeys = Object.keys(paginatedGrouped).sort((a, b) => b.localeCompare(a));
 
   // --- Analytics Data Processing ---
 
@@ -247,12 +277,20 @@ export default function LiveDashboard() {
     'rgba(236, 72, 153, 0.8)', // pink
   ];
 
+  const todayFormatted = (() => {
+    const now = new Date();
+    return `${dayNames[now.getDay()]}, ${now.getDate()} ${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+  })();
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">Live Dashboard</h2>
-          <p className="mt-1 text-sm text-gray-500 font-medium">Monitoring Real-Time & Business Intelligence.</p>
+          <div className="mt-1 flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-red-600" />
+            <p className="text-sm text-gray-500 font-medium">{todayFormatted}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -453,6 +491,8 @@ export default function LiveDashboard() {
                 <tr>
                   <th className="px-6 py-4 font-semibold">Nama</th>
                   <th className="px-6 py-4 font-semibold">Instansi</th>
+                  <th className="px-6 py-4 font-semibold">Hari</th>
+                  <th className="px-6 py-4 font-semibold">Tanggal</th>
                   <th className="px-6 py-4 font-semibold">PIC</th>
                   <th className="px-6 py-4 font-semibold">Keperluan</th>
                   <th className="px-6 py-4 font-semibold">Masuk</th>
@@ -462,70 +502,79 @@ export default function LiveDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredGuests.length === 0 ? (
+                {/* Loading */}
+                {isLoading && filteredGuests.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                      {isLoading ? (
-                        <div className="flex flex-col items-center gap-2">
-                          <Activity className="w-6 h-6 text-red-600 animate-spin" />
-                          <p className="text-xs font-bold uppercase tracking-widest">Memuat data tamu...</p>
-                        </div>
-                      ) : (
-                        "Tidak ada data yang ditemukan untuk filter ini."
-                      )}
+                    <td colSpan={10} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <Activity className="w-6 h-6 text-red-600 animate-spin" />
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Memuat data tamu...</p>
+                      </div>
                     </td>
                   </tr>
-                ) : (
-                  paginatedGuests.map((guest: any) => {
-                    const checkInTime = new Date(guest.check_in_time).getTime();
-                    const now = new Date().getTime();
-                    const isOverstay = guest.status === 'CHECKED_IN' && (now - checkInTime) > (4 * 60 * 60 * 1000);
-
-                    return (
-                      <tr 
-                        key={guest._id || guest.id} 
-                        onClick={() => setSelectedGuest(guest)}
-                        className={`hover:bg-gray-50/50 transition-colors cursor-pointer group ${isOverstay ? 'bg-red-50/50' : ''}`}
-                      >
-                        <td className="px-6 py-4 font-medium text-gray-900 group-hover:text-red-600 transition-colors">{guest.name}</td>
-                        <td className="px-6 py-4">{guest.agency}</td>
-                        <td className="px-6 py-4 font-medium text-gray-700">{guest.host || "-"}</td>
-                        <td className="px-6 py-4">{guest.purpose}</td>
-                        <td className="px-6 py-4 font-medium">{new Date(guest.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</td>
-                        <td className="px-6 py-4 font-mono text-gray-600">
-                          {guest.status === 'CHECKED_OUT' && guest.check_out_time
-                            ? new Date(guest.check_out_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-                            : '-'}
-                        </td>
-                        <td className="px-6 py-4">
-                          {guest.status === 'CHECKED_IN' ? (
-                            <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full border ${isOverstay ? 'text-red-700 bg-red-50 border-red-100' : 'text-blue-700 bg-blue-50 border-blue-100'}`}>
-                              <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${isOverstay ? 'bg-red-600 animate-pulse' : 'bg-blue-600'}`}></span>
-                              {isOverstay ? 'Overstay' : 'Di Area'}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-3 py-1 text-xs font-semibold text-gray-600 bg-gray-100 rounded-full border border-gray-200">
-                              Selesai
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                            {guest.status === 'CHECKED_IN' && (
-                              <button
-                                onClick={() => handleForceCheckout(guest.qr_code)}
-                                className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-                                title="Force Check-Out"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
                 )}
+
+                {/* Empty */}
+                {!isLoading && filteredGuests.length === 0 && (
+                  <tr>
+                    <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
+                      Tidak ada data yang ditemukan untuk filter ini.
+                    </td>
+                  </tr>
+                )}
+
+                {paginatedGuests.map((guest: any) => {
+                  const checkInDate = new Date(guest.check_in_time);
+                  const checkInTime = checkInDate.getTime();
+                  const now = new Date().getTime();
+                  const isOverstay = guest.status === 'CHECKED_IN' && (now - checkInTime) > (4 * 60 * 60 * 1000);
+
+                  return (
+                    <tr 
+                      key={guest._id || guest.id} 
+                      onClick={() => setSelectedGuest(guest)}
+                      className={`hover:bg-gray-50/50 transition-colors cursor-pointer group ${isOverstay ? 'bg-red-50/50' : ''}`}
+                    >
+                      <td className="px-6 py-4 font-medium text-gray-900 group-hover:text-red-600 transition-colors">{guest.name}</td>
+                      <td className="px-6 py-4">{guest.agency}</td>
+                      <td className="px-6 py-4 text-xs font-bold text-gray-900">{dayNames[checkInDate.getDay()]}</td>
+                      <td className="px-6 py-4 text-xs font-medium text-gray-500 whitespace-nowrap">{checkInDate.getDate()} {monthNames[checkInDate.getMonth()]} {checkInDate.getFullYear()}</td>
+                      <td className="px-6 py-4 font-medium text-gray-700">{guest.host || "-"}</td>
+                      <td className="px-6 py-4">{guest.purpose}</td>
+                      <td className="px-6 py-4 font-medium">{checkInDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</td>
+                      <td className="px-6 py-4 font-mono text-gray-600">
+                        {guest.status === 'CHECKED_OUT' && guest.check_out_time
+                          ? new Date(guest.check_out_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+                          : '-'}
+                      </td>
+                      <td className="px-6 py-4">
+                        {guest.status === 'CHECKED_IN' ? (
+                          <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full border ${isOverstay ? 'text-red-700 bg-red-50 border-red-100' : 'text-blue-700 bg-blue-50 border-blue-100'}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${isOverstay ? 'bg-red-600 animate-pulse' : 'bg-blue-600'}`}></span>
+                            {isOverstay ? 'Overstay' : 'Di Area'}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-3 py-1 text-xs font-semibold text-gray-600 bg-gray-100 rounded-full border border-gray-200">
+                            Selesai
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                          {guest.status === 'CHECKED_IN' && (
+                            <button
+                              onClick={() => handleForceCheckout(guest.qr_code)}
+                              className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                              title="Force Check-Out"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -547,7 +596,6 @@ export default function LiveDashboard() {
                 </button>
 
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  // Basic pagination window logic
                   let pageNum = i + 1;
                   if (totalPages > 5 && currentPage > 3) {
                     pageNum = currentPage - 3 + i + 1;
