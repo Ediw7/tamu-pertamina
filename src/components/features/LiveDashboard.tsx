@@ -294,11 +294,19 @@ export default function LiveDashboard() {
 
   // 3. Average Duration (for checked_out guests)
   const completedGuests = filteredGuests.filter(g => g.status === 'CHECKED_OUT' && g.check_out_time);
-  const totalDuration = completedGuests.reduce((acc, g) => {
+  
+  // Only include realistic durations (e.g., less than 12 hours) to prevent skewed averages
+  // from users manually checking out ancient records
+  const validDurations: number[] = [];
+  completedGuests.forEach(g => {
     const duration = new Date(g.check_out_time!).getTime() - new Date(g.check_in_time).getTime();
-    return acc + duration;
-  }, 0);
-  const avgDurationMs = completedGuests.length > 0 ? totalDuration / completedGuests.length : 0;
+    if (duration >= 0 && duration <= 12 * 60 * 60 * 1000) {
+      validDurations.push(duration);
+    }
+  });
+
+  const totalDuration = validDurations.reduce((acc, dur) => acc + dur, 0);
+  const avgDurationMs = validDurations.length > 0 ? totalDuration / validDurations.length : 0;
   const avgDurationMinutes = Math.round(avgDurationMs / (1000 * 60));
   const renderDuration = () => {
     if (avgDurationMinutes >= 60) {
