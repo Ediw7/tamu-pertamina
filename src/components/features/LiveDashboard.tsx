@@ -34,6 +34,39 @@ ChartJS.register(
   LineElement
 );
 
+// Custom plugin to draw percentage labels on pie chart slices
+const piePercentagePlugin = {
+  id: 'piePercentage',
+  afterDraw(chart: any) {
+    if (chart.config.type !== 'pie') return;
+    const ctx = chart.ctx;
+    const dataset = chart.data.datasets[0];
+    const total = dataset.data.reduce((a: number, b: number) => a + b, 0);
+    if (total === 0) return;
+
+    chart.getDatasetMeta(0).data.forEach((arc: any, i: number) => {
+      const value = dataset.data[i];
+      const percentage = ((value / total) * 100).toFixed(1);
+
+      // Get the center point of the arc
+      const model = arc;
+      const midAngle = (model.startAngle + model.endAngle) / 2;
+      const radius = (model.innerRadius + model.outerRadius) / 2;
+      const x = model.x + Math.cos(midAngle) * radius;
+      const y = model.y + Math.sin(midAngle) * radius;
+
+      ctx.save();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${percentage}%`, x, y);
+      ctx.restore();
+    });
+  }
+};
+ChartJS.register(piePercentagePlugin);
+
 export default function LiveDashboard() {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [activeCount, setActiveCount] = useState(0);
@@ -56,7 +89,7 @@ export default function LiveDashboard() {
     show: false,
     title: "",
     message: "",
-    onConfirm: () => {},
+    onConfirm: () => { },
     isDanger: false
   });
 
@@ -81,7 +114,7 @@ export default function LiveDashboard() {
       setFetchError(null);
       const response = await fetch('/api/guests', { cache: 'no-store' });
       const data = await response.json();
-      
+
       if (response.ok && Array.isArray(data)) {
         setGuests(data);
 
@@ -265,7 +298,25 @@ export default function LiveDashboard() {
     const duration = new Date(g.check_out_time!).getTime() - new Date(g.check_in_time).getTime();
     return acc + duration;
   }, 0);
-  const avgDurationMinutes = completedGuests.length > 0 ? Math.round(totalDuration / completedGuests.length / (1000 * 60)) : 0;
+  const avgDurationMs = completedGuests.length > 0 ? totalDuration / completedGuests.length : 0;
+  const avgDurationMinutes = Math.round(avgDurationMs / (1000 * 60));
+  const renderDuration = () => {
+    if (avgDurationMinutes >= 60) {
+      const hours = Math.floor(avgDurationMinutes / 60);
+      const mins = avgDurationMinutes % 60;
+      return (
+        <>
+          {hours}<span className="text-sm font-bold text-gray-400 uppercase tracking-tighter mx-1">Jam</span>
+          {mins > 0 && <>{mins}<span className="text-sm font-bold text-gray-400 uppercase tracking-tighter ml-1">Min</span></>}
+        </>
+      );
+    }
+    return (
+      <>
+        {avgDurationMinutes}<span className="text-sm font-bold text-gray-400 uppercase tracking-tighter ml-1">Min</span>
+      </>
+    );
+  };
 
   // Chart Colors
   const colors = [
@@ -320,7 +371,7 @@ export default function LiveDashboard() {
             <p className="text-sm font-bold">Gagal sinkronisasi data</p>
             <p className="text-xs opacity-80">{fetchError}</p>
           </div>
-          <button 
+          <button
             onClick={fetchGuests}
             className="px-3 py-1 bg-red-600 text-white text-[10px] font-bold rounded-lg hover:bg-red-700 transition-all"
           >
@@ -358,7 +409,9 @@ export default function LiveDashboard() {
               <Clock className="w-5 h-5 text-blue-600" />
             </div>
           </div>
-          <p className="text-4xl font-extrabold text-gray-900 relative z-10">{avgDurationMinutes} <span className="text-sm font-bold text-gray-400 uppercase tracking-tighter">Min</span></p>
+          <p className="text-4xl font-extrabold text-gray-900 relative z-10 flex items-baseline">
+            {renderDuration()}
+          </p>
         </div>
 
         <div className="p-6 bg-white border border-red-100 shadow-[0_4px_20_rgba(239,68,68,0.1)] rounded-2xl relative overflow-hidden transition-transform hover:scale-[1.02]">
@@ -409,12 +462,21 @@ export default function LiveDashboard() {
               {filterType !== "all" && <ChevronRight className="w-4 h-4 text-gray-300" />}
 
               {filterType === "daily" && (
-                <input
-                  type="date"
-                  value={filterDate}
-                  onChange={(e) => setFilterDate(e.target.value)}
-                  className="bg-transparent border-none focus:ring-0 text-sm font-medium text-red-600 cursor-pointer"
-                />
+                <div className="relative flex items-center pr-2">
+                  <div className="text-sm font-medium text-red-600 px-2 pointer-events-none">
+                    {filterDate ? (() => {
+                      const [y, m, d] = filterDate.split('-');
+                      return `${d}/${m}/${y}`;
+                    })() : "Pilih Tanggal"}
+                  </div>
+                  <CalendarDays className="w-4 h-4 text-red-600 pointer-events-none" />
+                  <input
+                    type="date"
+                    value={filterDate}
+                    onChange={(e) => setFilterDate(e.target.value)}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                </div>
               )}
 
               {filterType === "weekly" && (
@@ -530,8 +592,8 @@ export default function LiveDashboard() {
                   const isOverstay = guest.status === 'CHECKED_IN' && (now - checkInTime) > (4 * 60 * 60 * 1000);
 
                   return (
-                    <tr 
-                      key={guest._id || guest.id} 
+                    <tr
+                      key={guest._id || guest.id}
                       onClick={() => setSelectedGuest(guest)}
                       className={`hover:bg-gray-50/50 transition-colors cursor-pointer group ${isOverstay ? 'bg-red-50/50' : ''}`}
                     >
@@ -650,7 +712,17 @@ export default function LiveDashboard() {
                   maintainAspectRatio: false,
                   plugins: { legend: { display: false } },
                   scales: {
-                    y: { beginAtZero: true, grid: { display: false } },
+                    y: {
+                      beginAtZero: true,
+                      grid: { display: false },
+                      ticks: {
+                        stepSize: 1,
+                        callback: function (value: any) {
+                          if (Number.isInteger(value)) return value;
+                          return null;
+                        }
+                      }
+                    },
                     x: { grid: { display: false } }
                   }
                 }}
@@ -677,7 +749,17 @@ export default function LiveDashboard() {
                   responsive: true,
                   maintainAspectRatio: false,
                   plugins: {
-                    legend: { position: 'right', labels: { usePointStyle: true, padding: 20 } }
+                    legend: { position: 'right', labels: { usePointStyle: true, padding: 20 } },
+                    tooltip: {
+                      callbacks: {
+                        label: function (context: any) {
+                          const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
+                          const value = context.parsed;
+                          const percentage = ((value / total) * 100).toFixed(1);
+                          return `${context.label}: ${value} (${percentage}%)`;
+                        }
+                      }
+                    }
                   }
                 }}
               />
@@ -699,7 +781,7 @@ export default function LiveDashboard() {
       {/* Guest Detail Modal */}
       {selectedGuest && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div 
+          <div
             className="bg-white w-full max-w-2xl rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300"
             onClick={(e) => e.stopPropagation()}
           >
@@ -710,7 +792,7 @@ export default function LiveDashboard() {
                 <h3 className="text-xl font-black tracking-tight uppercase">Detail Pengunjung</h3>
                 <p className="text-red-100 text-[10px] font-medium opacity-80">Informasi lengkap kedatangan tamu.</p>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedGuest(null)}
                 className="absolute right-6 top-1/2 -translate-y-1/2 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all"
               >
@@ -789,17 +871,16 @@ export default function LiveDashboard() {
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 block">Status Kunjungan</span>
                     <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
                       <div className="flex items-center justify-between mb-4">
-                         <div className="flex items-center gap-2">
-                           <Clock className="w-4 h-4 text-gray-400" />
-                           <span className="text-[10px] font-bold text-gray-400 uppercase">Log Waktu</span>
-                         </div>
-                         <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${
-                           selectedGuest.status === 'CHECKED_IN' 
-                           ? 'bg-blue-50 text-blue-600 border-blue-100' 
-                           : 'bg-green-50 text-green-600 border-green-100'
-                         }`}>
-                           {selectedGuest.status === 'CHECKED_IN' ? 'DI AREA' : 'SELESAI'}
-                         </span>
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-gray-400" />
+                          <span className="text-[10px] font-bold text-gray-400 uppercase">Log Waktu</span>
+                        </div>
+                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${selectedGuest.status === 'CHECKED_IN'
+                            ? 'bg-blue-50 text-blue-600 border-blue-100'
+                            : 'bg-green-50 text-green-600 border-green-100'
+                          }`}>
+                          {selectedGuest.status === 'CHECKED_IN' ? 'DI AREA' : 'SELESAI'}
+                        </span>
                       </div>
                       <div className="space-y-3">
                         <div className="flex justify-between items-center">
@@ -820,13 +901,13 @@ export default function LiveDashboard() {
                     <div>
                       <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 block">Lampiran Identitas</span>
                       <div className="relative group rounded-2xl overflow-hidden border border-gray-100 bg-gray-50">
-                        <img 
-                          src={selectedGuest.ktp_image} 
-                          alt="KTP Pengunjung" 
+                        <img
+                          src={selectedGuest.ktp_image}
+                          alt="KTP Pengunjung"
                           className="w-full aspect-[3/2] object-cover transition-transform group-hover:scale-105 duration-500"
                         />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <button 
+                          <button
                             onClick={() => window.open(selectedGuest.ktp_image, '_blank')}
                             className="p-3 bg-white text-gray-900 rounded-full shadow-xl hover:scale-110 transition-transform"
                           >
@@ -849,14 +930,14 @@ export default function LiveDashboard() {
 
             {/* Modal Footer */}
             <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-              <button 
+              <button
                 onClick={() => setSelectedGuest(null)}
                 className="px-6 py-2.5 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
               >
                 Tutup
               </button>
               {selectedGuest.status === 'CHECKED_IN' && (
-                <button 
+                <button
                   onClick={() => {
                     handleForceCheckout(selectedGuest.qr_code);
                     setSelectedGuest(null);
@@ -877,9 +958,8 @@ export default function LiveDashboard() {
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
             <div className={`p-8 text-center ${confirmModal.isDanger ? 'bg-red-50' : 'bg-blue-50'}`}>
-              <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center shadow-lg ${
-                confirmModal.isDanger ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'
-              }`}>
+              <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center shadow-lg ${confirmModal.isDanger ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'
+                }`}>
                 {confirmModal.isDanger ? <ShieldAlert className="w-8 h-8" /> : <Activity className="w-8 h-8" />}
               </div>
               <h3 className="text-xl font-black text-gray-900 mb-2">{confirmModal.title}</h3>
@@ -888,17 +968,16 @@ export default function LiveDashboard() {
               </p>
             </div>
             <div className="p-6 bg-white flex gap-3">
-              <button 
+              <button
                 onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
                 className="flex-1 px-6 py-3 text-xs font-bold text-gray-500 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all"
               >
                 Batal
               </button>
-              <button 
+              <button
                 onClick={confirmModal.onConfirm}
-                className={`flex-1 px-6 py-3 text-xs font-bold text-white rounded-xl shadow-lg transition-all active:scale-95 ${
-                  confirmModal.isDanger ? 'bg-red-600 hover:bg-red-700 shadow-red-600/20' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
-                }`}
+                className={`flex-1 px-6 py-3 text-xs font-bold text-white rounded-xl shadow-lg transition-all active:scale-95 ${confirmModal.isDanger ? 'bg-red-600 hover:bg-red-700 shadow-red-600/20' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
+                  }`}
               >
                 Ya, Lanjutkan
               </button>
