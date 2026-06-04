@@ -21,7 +21,7 @@ import {
 } from 'chart.js';
 import { Bar, Pie, Line } from 'react-chartjs-2';
 
-// Register Chart.js components
+
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -34,7 +34,7 @@ ChartJS.register(
   LineElement
 );
 
-// Custom plugin to draw percentage labels on pie chart slices
+
 const piePercentagePlugin = {
   id: 'piePercentage',
   afterDraw(chart: any) {
@@ -48,7 +48,7 @@ const piePercentagePlugin = {
       const value = dataset.data[i];
       const percentage = ((value / total) * 100).toFixed(1);
 
-      // Get the center point of the arc
+
       const model = arc;
       const midAngle = (model.startAngle + model.endAngle) / 2;
       const radius = (model.innerRadius + model.outerRadius) / 2;
@@ -93,7 +93,7 @@ export default function LiveDashboard() {
     isDanger: false
   });
 
-  // States for search and filtering
+
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [filterType, setFilterType] = useState("all");
@@ -140,12 +140,12 @@ export default function LiveDashboard() {
     }
   };
 
-  // Reset to page 1 when filters change
+
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, statusFilter, filterType, filterDate, filterWeek, filterMonth, filterYear]);
 
-  // Initial fetch and polling
+
   useEffect(() => {
     fetchGuests();
     const interval = setInterval(fetchGuests, 10000);
@@ -240,7 +240,7 @@ export default function LiveDashboard() {
     return matchesSearch && matchesStatus && matchesTime;
   });
 
-  // --- Group guests by date ---
+
   const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
   const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
@@ -261,14 +261,14 @@ export default function LiveDashboard() {
   });
   const sortedDateKeys = Object.keys(groupedByDate).sort((a, b) => b.localeCompare(a)); // newest first
 
-  // Pagination logic (still applies to flat list for table view)
+
   const totalPages = Math.ceil(filteredGuests.length / itemsPerPage);
   const paginatedGuests = filteredGuests.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  // Group paginated guests by date for card view
+
   const paginatedGrouped: Record<string, typeof filteredGuests> = {};
   paginatedGuests.forEach(guest => {
     const dateKey = new Date(guest.check_in_time).toLocaleDateString('sv-SE');
@@ -277,26 +277,23 @@ export default function LiveDashboard() {
   });
   const paginatedDateKeys = Object.keys(paginatedGrouped).sort((a, b) => b.localeCompare(a));
 
-  // --- Analytics Data Processing ---
 
-  // 1. Hourly Arrival Distribution
   const hourlyData = Array(24).fill(0);
   filteredGuests.forEach(g => {
     const hour = new Date(g.check_in_time).getHours();
     hourlyData[hour]++;
   });
 
-  // 2. Purpose Distribution
+
   const purposeCounts: Record<string, number> = {};
   filteredGuests.forEach(g => {
     purposeCounts[g.purpose] = (purposeCounts[g.purpose] || 0) + 1;
   });
 
-  // 3. Average Duration (for checked_out guests)
+
   const completedGuests = filteredGuests.filter(g => g.status === 'CHECKED_OUT' && g.check_out_time);
-  
-  // Only include realistic durations (e.g., less than 12 hours) to prevent skewed averages
-  // from users manually checking out ancient records
+
+
   const validDurations: number[] = [];
   completedGuests.forEach(g => {
     const duration = new Date(g.check_out_time!).getTime() - new Date(g.check_in_time).getTime();
@@ -326,7 +323,7 @@ export default function LiveDashboard() {
     );
   };
 
-  // Chart Colors
+
   const colors = [
     'rgba(239, 68, 68, 0.8)', // red
     'rgba(59, 130, 246, 0.8)', // blue
@@ -884,8 +881,8 @@ export default function LiveDashboard() {
                           <span className="text-[10px] font-bold text-gray-400 uppercase">Log Waktu</span>
                         </div>
                         <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${selectedGuest.status === 'CHECKED_IN'
-                            ? 'bg-blue-50 text-blue-600 border-blue-100'
-                            : 'bg-green-50 text-green-600 border-green-100'
+                          ? 'bg-blue-50 text-blue-600 border-blue-100'
+                          : 'bg-green-50 text-green-600 border-green-100'
                           }`}>
                           {selectedGuest.status === 'CHECKED_IN' ? 'DI AREA' : 'SELESAI'}
                         </span>
