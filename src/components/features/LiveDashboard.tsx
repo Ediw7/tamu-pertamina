@@ -152,22 +152,31 @@ export default function LiveDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleExportCSV = () => {
+ const handleExportCSV = () => {
     const headers = ["Nama", "Instansi", "Alamat Instansi", "PIC", "Keperluan", "Masuk", "Keluar", "Status"];
+    
+    // Fungsi kecil untuk membersihkan koma/titik koma di dalam teks agar tidak merusak kolom
+    const cleanText = (text) => (text || "-").toString().replace(/[;,]/g, " ").replace(/\n/g, " ");
+
     const rows = filteredGuests.map(g => [
-      g.name,
-      g.agency,
-      g.agency_address || "-",
-      g.host || "-",
-      g.purpose,
-      new Date(g.check_in_time).toLocaleString(),
-      g.check_out_time ? new Date(g.check_out_time).toLocaleString() : "-",
+      cleanText(g.name),
+      cleanText(g.agency),
+      cleanText(g.agency_address),
+      cleanText(g.host),
+      cleanText(g.purpose),
+      new Date(g.check_in_time).toLocaleString('id-ID'), // Format tanggal Indonesia
+      g.check_out_time ? new Date(g.check_out_time).toLocaleString('id-ID') : "-",
       g.status
     ]);
 
+    // 1. Gabungkan data secara paksa dengan TITIK KOMA (;)
     const csvContent = [headers, ...rows].map(e => e.join(";")).join("\n");
     
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // 2. Tambahkan BOM (Byte Order Mark) agar Excel mendeteksi file dengan sempurna
+    const BOM = "\uFEFF"; 
+    const finalCsvData = BOM + csvContent;
+
+    const blob = new Blob([finalCsvData], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
